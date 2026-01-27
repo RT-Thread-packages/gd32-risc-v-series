@@ -31,7 +31,7 @@ if GetDepend(['RT_USING_SPI']):
 if GetDepend(['RT_USING_ADC']):
     src += ['GD32VW55x_standard_peripheral/Source/gd32vw55x_adc.c']
 
-if GetDepend(['RT_USING_HWTIMER']):
++if GetDepend(['RT_USING_HWTIMER']) or GetDepend(['RT_USING_PWM']):
     src += ['GD32VW55x_standard_peripheral/Source/gd32vw55x_timer.c']
 
 if GetDepend(['RT_USING_RTC']):
