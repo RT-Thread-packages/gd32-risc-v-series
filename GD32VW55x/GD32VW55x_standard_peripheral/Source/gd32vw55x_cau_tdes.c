@@ -2,11 +2,11 @@
     \file    gd32vw55x_cau_tdes.c
     \brief   CAU TDES driver
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -164,7 +164,7 @@ static ErrStatus cau_tdes_calculate(uint8_t *input, uint32_t in_length, uint8_t 
     __IO uint32_t counter = 0U;
     uint32_t busystatus = 0U;
 
-    /* the clock is not enabled or there is no embedded CAU peripheral */
+    /* the clock is not enabled or there is no embeded CAU peripheral */
     if(DISABLE == cau_enable_state_get()) {
         return ERROR;
     }

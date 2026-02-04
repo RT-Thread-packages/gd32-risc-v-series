@@ -2,11 +2,11 @@
     \file    gd32vw55x_cau_aes.c
     \brief   CAU AES driver
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -37,9 +37,8 @@ OF SUCH DAMAGE.
 
 #define AESBSY_TIMEOUT    ((uint32_t)0x00010000U)
 #define BLOCK_B0_MASK     ((uint8_t)0x07U)
-#define BLOCK_DATA_SIZE   ((uint32_t)0x00000010U)
-#define MIN_CCM_IV_SIZE   ((uint32_t)0x00000007U)
-#define MAX_CCM_IV_SIZE   ((uint32_t)0x0000000DU)
+#define BLOCK_DATA_SIZE   16U
+#define MAX_CCM_IV_SIZE   15U
 
 /* configure AES key structure parameter */
 static void cau_aes_key_config(uint8_t *key, uint32_t keysize, cau_key_parameter_struct *cau_key_initpara);
@@ -462,6 +461,7 @@ ErrStatus cau_aes_gcm(cau_parameter_struct *cau_parameter, uint8_t *output, uint
     *(uint32_t *)(tagaddr) = cau_data_read();
     tagaddr += 4U;
     *(uint32_t *)(tagaddr) = cau_data_read();
+    tagaddr += 4U;
 
     /* disable the CAU peripheral */
     cau_disable();
@@ -532,7 +532,7 @@ ErrStatus cau_aes_ccm(cau_parameter_struct *cau_parameter, uint8_t *output, uint
         }
         /* check if the aad block size is modulo 16 */
         if(0U != (aad_block_size % 16U)) {
-            /* Pad the aad buffer with 0s till the HBuffer length is modulo 16 */
+            /* Padd the aad buffer with 0s till the HBuffer length is modulo 16 */
             for(i = aad_block_size; i <= ((aad_block_size / 16U) + 1U) * 16U; i++) {
                 aad_buf[i] = 0U;
             }
@@ -550,7 +550,7 @@ ErrStatus cau_aes_ccm(cau_parameter_struct *cau_parameter, uint8_t *output, uint
     /* flags byte */
     blockb0[0] |= (0U | (((((uint8_t) tag_size - 2U) / 2U) & 0x07U) << 3U) | (((uint8_t)(15U - ivsize) - 1U) & 0x07U));
 
-    if((MIN_CCM_IV_SIZE > ivsize) || (MAX_CCM_IV_SIZE < ivsize)) {
+    if(ivsize > MAX_CCM_IV_SIZE) {
         return ERROR;
     }
 
@@ -573,7 +573,7 @@ ErrStatus cau_aes_ccm(cau_parameter_struct *cau_parameter, uint8_t *output, uint
     } else {
         /* the payload length is expressed in plen bytes */
         for(; i < 15U; i++) {
-            blockb0[i + 1U] = (uint8_t)((inputsize >> ((uint8_t)((plen - 1U) * 8U))) & 0xFFU);
+            blockb0[i + 1U] = (uint8_t)((inputsize >> ((plen - 1U) * 8U)) & 0xFFU);
             plen--;
         }
     }
@@ -597,7 +597,7 @@ ErrStatus cau_aes_ccm(cau_parameter_struct *cau_parameter, uint8_t *output, uint
     cau_key_struct_para_init(&key_initpara);
     /* initialize the CAU peripheral */
     cau_init(cau_parameter->alg_dir, CAU_MODE_AES_CCM, CAU_SWAPPING_8BIT);
-    /* select init phase */
+    /* select prepare phase */
     cau_phase_config(CAU_PREPARE_PHASE);
 
     /* AES key structure parameter config */
@@ -645,11 +645,11 @@ ErrStatus cau_aes_ccm(cau_parameter_struct *cau_parameter, uint8_t *output, uint
         }
     }
 
-    /* encrypt or decrypt phase */
+    /* encrypt or dcrypt phase */
     inputsize = cau_parameter->in_length;
 
     if((uint32_t)0U != inputsize) {
-        /* select encrypt or decrypt phase */
+        /* select encrypt or dcrypt phase */
         cau_phase_config(CAU_ENCRYPT_DECRYPT_PHASE);
         /* enable the CAU peripheral */
         cau_enable();
@@ -723,7 +723,6 @@ static void cau_aes_key_config(uint8_t *key, uint32_t keysize, cau_key_parameter
     uint32_t keyaddr = (uint32_t)key;
 
     switch(keysize) {
-    /* 128-bit key initialization */
     case 128:
         cau_aes_keysize_config(CAU_KEYSIZE_128BIT);
         cau_key_initpara->key_2_high = __REV(*(uint32_t *)(keyaddr));
@@ -734,7 +733,6 @@ static void cau_aes_key_config(uint8_t *key, uint32_t keysize, cau_key_parameter
         keyaddr += 4U;
         cau_key_initpara->key_3_low  = __REV(*(uint32_t *)(keyaddr));
         break;
-    /* 192-bit key initialization */
     case 192:
         cau_aes_keysize_config(CAU_KEYSIZE_192BIT);
         cau_key_initpara->key_1_high = __REV(*(uint32_t *)(keyaddr));
@@ -749,7 +747,6 @@ static void cau_aes_key_config(uint8_t *key, uint32_t keysize, cau_key_parameter
         keyaddr += 4U;
         cau_key_initpara->key_3_low  = __REV(*(uint32_t *)(keyaddr));
         break;
-    /* 256-bit key initialization */
     case 256:
         cau_aes_keysize_config(CAU_KEYSIZE_256BIT);
         cau_key_initpara->key_0_high = __REV(*(uint32_t *)(keyaddr));
@@ -853,7 +850,7 @@ static ErrStatus cau_aes_calculate(uint8_t *input, uint32_t in_length, uint8_t *
     __IO uint32_t counter = 0U;
     uint32_t busystatus = 0U;
 
-    /* the clock is not enabled or there is no embedded CAU peripheral */
+    /* the clock is not enabled or there is no embeded CAU peripheral */
     if(DISABLE == cau_enable_state_get()) {
         return ERROR;
     }

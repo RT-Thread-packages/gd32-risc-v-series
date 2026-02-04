@@ -2,11 +2,11 @@
     \file    gd32vw55x_rcu.c
     \brief   RCU driver
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -1062,14 +1062,17 @@ uint32_t rcu_clock_freq_get(rcu_clock_freq_enum clock)
     uint32_t sws, ck_freq = 0U;
     uint32_t cksys_freq, ahb_freq, apb1_freq, apb2_freq;
     uint32_t usart0_freq = 0U,i2c0_freq = 0U;
-    uint32_t plldigpsc, idx, clk_exp;
+    uint32_t idx, clk_exp;
 
     /* exponent of AHB, APB1 and APB2 clock divider */
     const uint8_t ahb_exp[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9};
     const uint8_t apb1_exp[8] = {0, 0, 0, 0, 1, 2, 3, 4};
     const uint8_t apb2_exp[8] = {0, 0, 0, 0, 1, 2, 3, 4};
 
-    const uint32_t plldig_oclk[4] = {192000000,240000000,320000000,480000000};
+    #ifndef CONFIG_PLATFORM_FPGA
+    uint32_t plldigpsc;
+    const uint32_t plldig_oclk[4] = {192000000, 240000000, 320000000, 480000000};
+    #endif
 
     sws = GET_BITS(RCU_CFG0, 2, 3);
     switch(sws){
@@ -1083,9 +1086,14 @@ uint32_t rcu_clock_freq_get(rcu_clock_freq_enum clock)
         break;
     /* PLLP is selected as CK_SYS */
     case SEL_PLLDIG:
-        idx = GET_BITS(RCU_PLLDIGCFG0,24,25);
-        plldigpsc = GET_BITS(RCU_PLLDIGCFG0,26U,31U)+1;
-        cksys_freq = plldig_oclk[idx]/plldigpsc;
+    #ifdef CONFIG_PLATFORM_FPGA
+        /* For FPGA platform, PLLDIG clock is fixed at HXTAL_VALUE */
+        cksys_freq = HXTAL_VALUE;
+    #else
+        idx = GET_BITS(RCU_PLLDIGCFG0, 24, 25);
+        plldigpsc = GET_BITS(RCU_PLLDIGCFG0, 26U, 31U) + 1;
+        cksys_freq = plldig_oclk[idx] / plldigpsc;
+    #endif
         break;
     /* IRC16M is selected as CK_SYS */
     default:
@@ -1106,6 +1114,10 @@ uint32_t rcu_clock_freq_get(rcu_clock_freq_enum clock)
     idx = GET_BITS(RCU_CFG0, 13, 15);
     clk_exp = apb2_exp[idx];
     apb2_freq = ahb_freq >> clk_exp;
+
+#ifdef CONFIG_PLATFORM_FPGA
+    apb1_freq = apb2_freq;
+#endif
 
     /* return the clocks frequency */
     switch(clock){

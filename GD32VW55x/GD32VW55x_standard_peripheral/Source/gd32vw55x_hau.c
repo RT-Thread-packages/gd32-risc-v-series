@@ -2,11 +2,11 @@
     \file    gd32vw55x_hau.c
     \brief   HAU driver
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -79,9 +79,14 @@ void hau_init(hau_init_parameter_struct* initpara)
 }
 
 /*!
-    \brief      initialize the structure hau_initpara with default value 
-    \param[in]  none
-    \param[out] initpara: HAU init parameter struct 
+    \brief      initialize the sturct hau_initpara
+    \param[in]  initpara: HAU init parameter struct
+                members of the structure and the member values are shown as below:
+                  algo: HAU_ALGO_SHA1, HAU_ALGO_SHA224, HAU_ALGO_SHA256, HAU_ALGO_MD5
+                  mode: HAU_MODE_HASH, HAU_MODE_HMAC
+                  datatype: HAU_SWAPPING_32BIT, HAU_SWAPPING_16BIT, HAU_SWAPPING_8BIT, HAU_SWAPPING_1BIT
+                  keytype: HAU_KEY_SHORTER_64, HAU_KEY_LONGGER_64
+    \param[out] none
     \retval     none
 */
 void hau_init_struct_para_init(hau_init_parameter_struct* initpara)

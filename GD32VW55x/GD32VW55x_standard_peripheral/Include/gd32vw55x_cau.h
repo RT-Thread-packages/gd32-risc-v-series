@@ -2,11 +2,11 @@
     \file    gd32vw55x_cau.h
     \brief   definitions for the CAU
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -174,32 +174,32 @@ typedef struct {
 #define CAU_DECRYPT                 CAU_CTL_CAUDIR                             /*!< decrypt */
 
 #define CTL_ALGM(regval)            ((BITS(3,5) & ((uint32_t)(regval) << 3U)) | \
-                                     (BIT(19) & ((uint32_t)(regval) << 16U)))    /*!< write value to CAU_CTL_ALGM bit field */
-#define CAU_MODE_TDES_ECB           CTL_ALGM(0)                                 /*!< TDES-ECB (3DES Electronic codebook) */
-#define CAU_MODE_TDES_CBC           CTL_ALGM(1)                                 /*!< TDES-CBC (3DES Cipher block chaining) */
-#define CAU_MODE_DES_ECB            CTL_ALGM(2)                                 /*!< DES-ECB (simple DES Electronic codebook) */
-#define CAU_MODE_DES_CBC            CTL_ALGM(3)                                 /*!< DES-CBC (simple DES Cipher block chaining) */
-#define CAU_MODE_AES_ECB            CTL_ALGM(4)                                 /*!< AES-ECB (AES Electronic codebook) */
-#define CAU_MODE_AES_CBC            CTL_ALGM(5)                                 /*!< AES-CBC (AES Cipher block chaining) */
-#define CAU_MODE_AES_CTR            CTL_ALGM(6)                                 /*!< AES-CTR (AES counter mode) */
-#define CAU_MODE_AES_KEY            CTL_ALGM(7)                                 /*!< AES decryption key preparation mode */
-#define CAU_MODE_AES_GCM            CTL_ALGM(8)                                 /*!< AES-GCM (AES Galois/counter mode) */
-#define CAU_MODE_AES_CCM            CTL_ALGM(9)                                 /*!< AES-CCM (AES combined cipher machine mode) */
-#define CAU_MODE_AES_CFB            CTL_ALGM(10)                                /*!< AES-CFB (cipher feedback mode) */
-#define CAU_MODE_AES_OFB            CTL_ALGM(11)                                /*!< AES-OFB (output feedback mode) */
+                                     (BIT(19) & ((uint32_t)(regval) << 16U)))  /*!< write value to CAU_CTL_ALGM bit field */
+#define CAU_MODE_TDES_ECB           CTL_ALGM(0)                                /*!< TDES-ECB (3DES Electronic codebook) */
+#define CAU_MODE_TDES_CBC           CTL_ALGM(1)                                /*!< TDES-CBC (3DES Cipher block chaining) */
+#define CAU_MODE_DES_ECB            CTL_ALGM(2)                                /*!< DES-ECB (simple DES Electronic codebook) */
+#define CAU_MODE_DES_CBC            CTL_ALGM(3)                                /*!< DES-CBC (simple DES Cipher block chaining) */
+#define CAU_MODE_AES_ECB            CTL_ALGM(4)                                /*!< AES-ECB (AES Electronic codebook) */
+#define CAU_MODE_AES_CBC            CTL_ALGM(5)                                /*!< AES-CBC (AES Cipher block chaining) */
+#define CAU_MODE_AES_CTR            CTL_ALGM(6)                                /*!< AES-CTR (AES counter mode) */
+#define CAU_MODE_AES_KEY            CTL_ALGM(7)                                /*!< AES decryption key preparation mode */
+#define CAU_MODE_AES_GCM            CTL_ALGM(8)                                /*!< AES-GCM (AES Galois/counter mode) */
+#define CAU_MODE_AES_CCM            CTL_ALGM(9)                                /*!< AES-CCM (AES combined cipher machine mode) */
+#define CAU_MODE_AES_CFB            CTL_ALGM(10)                               /*!< AES-CFB (cipher feedback mode) */
+#define CAU_MODE_AES_OFB            CTL_ALGM(11)                               /*!< AES-OFB (output feedback mode) */
 
-#define CTL_DATAM(regval)           (BITS(6,7) & ((uint32_t)(regval) << 6U))    /*!< write value to CAU_CTL_DATAM bit field */
+#define CTL_DATAM(regval)           (BITS(6,7) & ((uint32_t)(regval) << 6U))   /*!< write value to CAU_CTL_DATAM bit field */
 #define CAU_SWAPPING_32BIT          CTL_DATAM(0)                               /*!< no swapping */
 #define CAU_SWAPPING_16BIT          CTL_DATAM(1)                               /*!< half-word swapping */
 #define CAU_SWAPPING_8BIT           CTL_DATAM(2)                               /*!< bytes swapping */
 #define CAU_SWAPPING_1BIT           CTL_DATAM(3)                               /*!< bit swapping */
 
-#define CTL_KEYM(regval)            (BITS(8,9) & ((uint32_t)(regval) << 8U))    /*!< write value to CAU_CTL_KEYM bit field */
+#define CTL_KEYM(regval)            (BITS(8,9) & ((uint32_t)(regval) << 8U))   /*!< write value to CAU_CTL_KEYM bit field */
 #define CAU_KEYSIZE_128BIT          CTL_KEYM(0)                                /*!< 128 bit key length */
 #define CAU_KEYSIZE_192BIT          CTL_KEYM(1)                                /*!< 192 bit key length */
 #define CAU_KEYSIZE_256BIT          CTL_KEYM(2)                                /*!< 256 bit key length */
 
-#define CTL_GCM_CCMPH(regval)       (BITS(16,17) & ((uint32_t)(regval) << 16U)) /*!< write value to CTL_GCM_CCMPH bit field */
+#define CTL_GCM_CCMPH(regval)       (BITS(16,17) & ((uint32_t)(regval) << 16U))/*!< write value to CTL_GCM_CCMPH bit field */
 #define CAU_PREPARE_PHASE           CTL_GCM_CCMPH(0)                           /*!< prepare phase */
 #define CAU_AAD_PHASE               CTL_GCM_CCMPH(1)                           /*!< AAD phase */
 #define CAU_ENCRYPT_DECRYPT_PHASE   CTL_GCM_CCMPH(2)                           /*!< encryption/decryption phase */
@@ -223,8 +223,8 @@ typedef struct {
 #define CAU_INT_OUTFIFO             CAU_INTEN_OINTEN                           /*!< OUT FIFO Interrupt */
 
 /* cau_stat1 register value */
-#define CAU_FLAG_INFIFO             (CAU_STAT1_ISTA | BIT(31))                 /*!< IN FIFO flag status */
-#define CAU_FLAG_OUTFIFO            (CAU_STAT1_OSTA | BIT(31))                 /*!< OUT FIFO flag status */
+#define CAU_FLAG_INFIFO             CAU_STAT1_ISTA                             /*!< IN FIFO flag status */
+#define CAU_FLAG_OUTFIFO            CAU_STAT1_OSTA                             /*!< OUT FIFO flag status */
 
 /* cau_intf register value */
 #define CAU_INT_FLAG_INFIFO         CAU_INTF_IINTF                             /*!< IN FIFO interrupt status */

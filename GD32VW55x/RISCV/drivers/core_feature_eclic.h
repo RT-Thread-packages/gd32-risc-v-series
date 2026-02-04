@@ -175,11 +175,11 @@ typedef enum IRQn {
     Reserved0_IRQn            =   0,              /*!<  Internal reserved */
     Reserved1_IRQn            =   1,              /*!<  Internal reserved */
     Reserved2_IRQn            =   2,              /*!<  Internal reserved */
-    SysTimerSW_IRQn           =   3,              /*!<  System Timer SW interrupt */
+    CLIC_INT_SFT              =   3,              /*!<  System Timer SW interrupt */
     Reserved3_IRQn            =   4,              /*!<  Internal reserved */
     Reserved4_IRQn            =   5,              /*!<  Internal reserved */
     Reserved5_IRQn            =   6,              /*!<  Internal reserved */
-    SysTimer_IRQn             =   7,              /*!<  System Timer Interrupt */
+    CLIC_INT_TMR              =   7,              /*!<  System Timer Interrupt */
     Reserved6_IRQn            =   8,              /*!<  Internal reserved */
     Reserved7_IRQn            =   9,              /*!<  Internal reserved */
     Reserved8_IRQn            =  10,              /*!<  Internal reserved */

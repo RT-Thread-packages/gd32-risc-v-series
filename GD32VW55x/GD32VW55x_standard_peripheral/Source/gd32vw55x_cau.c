@@ -2,11 +2,11 @@
     \file    gd32vw55x_cau.c
     \brief   CAU driver
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -35,6 +35,7 @@ OF SUCH DAMAGE.
 #include "gd32vw55x_cau.h"
 #include "gd32vw55x_rcu.h"
 
+#define FLAG_MASK            ((uint32_t)0x00000020U)
 #define STAT0_AESDES_MASK    ((uint32_t)0x00000015U)
 #define STAT0_TDES_MASK      ((uint32_t)0x00000014U)
 
@@ -650,9 +651,9 @@ FlagStatus cau_flag_get(uint32_t flag)
     FlagStatus ret_flag = RESET;
 
     /* check if the flag is in CAU_STAT1 register */
-    if(SET == (flag >> 31U)){
+    if(RESET != (flag & FLAG_MASK)){
         reg = CAU_STAT1;
-    } else {
+    }else{
         /* the flag is in CAU_STAT0 register */
         reg = CAU_STAT0;
     }

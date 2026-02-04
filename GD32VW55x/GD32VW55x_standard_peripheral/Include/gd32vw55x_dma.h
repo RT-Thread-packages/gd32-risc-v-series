@@ -2,11 +2,11 @@
     \file    gd32vw55x_dma.h
     \brief   definitions for the DMA
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -221,7 +221,7 @@ typedef struct
     uint32_t priority;                                                  /*!< channel priority level */
 }dma_single_data_parameter_struct;
 
-#define DMA_FLAG_ADD(flag, channel)    (uint32_t)((flag) << (((((uint32_t)((channel) & 0x03) * 6U)) + ((uint32_t)(((uint32_t)((channel) & 0x03)) >> 1U) & 0x01U) * 4U)))   /*!< DMA channel flag shift */
+#define DMA_FLAG_ADD(flag, channel)    ((uint32_t)((flag) << ((((uint32_t)(channel) * 6U)) + ((uint32_t)(((uint32_t)(channel)) >> 1U) & 0x01U) * 4U)))   /*!< DMA channel flag shift */
 
 /* DMA_register address */
 #define DMA_CHCTL(channel)                 REG32((DMA + 0x10U) + 0x18U * (channel))  /*!< the address of DMA channel CHXCTL register  */

@@ -32,6 +32,8 @@
  extern "C" {
 #endif
 
+#include "core_feature_base.h"
+
 #if defined(__SYSTIMER_PRESENT) && (__SYSTIMER_PRESENT == 1)
 /**
  * \defgroup NMSIS_Core_SysTimer_Registers     Register Define and Type Definitions Of System Timer
@@ -104,7 +106,11 @@ typedef struct {
  */
 __STATIC_FORCEINLINE void SysTimer_SetLoadValue(uint64_t value)
 {
-    SysTimer->MTIMER = value;
+    uint8_t *addr;
+    addr = (uint8_t *)(&(SysTimer->MTIMER));
+    __SW(addr, 0);      // prevent carry
+    __SW(addr + 4, (uint32_t)(value >> 32));
+    __SW(addr, (uint32_t)(value));
 }
 
 /**
@@ -118,7 +124,20 @@ __STATIC_FORCEINLINE void SysTimer_SetLoadValue(uint64_t value)
  */
 __STATIC_FORCEINLINE uint64_t SysTimer_GetLoadValue(void)
 {
-    return SysTimer->MTIMER;
+    volatile uint32_t high0, low, high;
+    uint64_t full;
+    uint8_t *addr;
+
+    addr = (uint8_t *)(&(SysTimer->MTIMER));
+
+    high0 = __LW(addr + 4);
+    low = __LW(addr);
+    high = __LW(addr + 4);
+    if (high0 != high) {
+        low = __LW(addr);
+    }
+    full = (((uint64_t)high) << 32) | low;
+    return full;
 }
 
 /**
@@ -134,7 +153,20 @@ __STATIC_FORCEINLINE uint64_t SysTimer_GetLoadValue(void)
  */
 __STATIC_FORCEINLINE void SysTimer_SetCompareValue(uint64_t value)
 {
-    SysTimer->MTIMERCMP = value;
+        uint8_t *addr;
+        addr = (uint8_t *)(&(SysTimer->MTIMERCMP));
+
+        /*This is GD modify*/
+        __SW(addr + 4, -1U);      // disable compare interrupt
+        __SW(addr, (uint32_t)(value));
+        __SW(addr + 4, (uint32_t)(value >> 32));
+
+        /*the follow is nuclei code, it may be generate unexpect interrupt */
+        /*
+        __SW(addr, -1U);      // prevent load > timecmp
+        __SW(addr + 4, (uint32_t)(value >> 32));
+        __SW(addr, (uint32_t)(value));
+        */
 }
 
 /**
@@ -305,9 +337,9 @@ __STATIC_INLINE uint32_t SysTick_Config(uint64_t ticks)
 {
     SysTimer_SetLoadValue(0);
     SysTimer_SetCompareValue(ticks);
-    ECLIC_SetShvIRQ(SysTimer_IRQn, ECLIC_NON_VECTOR_INTERRUPT);
-    ECLIC_SetLevelIRQ(SysTimer_IRQn, 0);
-    ECLIC_EnableIRQ(SysTimer_IRQn);
+    ECLIC_SetShvIRQ(CLIC_INT_TMR, ECLIC_NON_VECTOR_INTERRUPT);
+    ECLIC_SetLevelIRQ(CLIC_INT_TMR, 0);
+    ECLIC_EnableIRQ(CLIC_INT_TMR);
     return (0UL);
 }
 
@@ -336,17 +368,17 @@ __STATIC_INLINE uint32_t SysTick_Config(uint64_t ticks)
  */
 __STATIC_FORCEINLINE uint32_t SysTick_Reload(uint64_t ticks)
 {
-    uint64_t cur_ticks = SysTimer->MTIMER;
+    uint64_t cur_ticks = SysTimer_GetLoadValue();
     uint64_t reload_ticks = ticks + cur_ticks;
 
     if (__USUALLY(reload_ticks > cur_ticks)) {
-        SysTimer->MTIMERCMP = reload_ticks;
+        SysTimer_SetCompareValue(reload_ticks);
     } else {
         /* When added the ticks value, then the MTIMERCMP < TIMER,
          * which means the MTIMERCMP is overflowed,
          * so we need to reset the counter to zero */
-        SysTimer->MTIMER = 0;
-        SysTimer->MTIMERCMP = ticks;
+        SysTimer_SetLoadValue(0);
+        SysTimer_SetCompareValue(ticks);
     }
 
     return (0UL);
@@ -361,4 +393,3 @@ __STATIC_FORCEINLINE uint32_t SysTick_Reload(uint64_t ticks)
 }
 #endif
 #endif /** __CORE_FEATURE_TIMER_H__  */
-

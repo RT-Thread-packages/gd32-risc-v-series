@@ -2,11 +2,11 @@
     \file    gd32vw55x_efuse.c
     \brief   EFUSE driver
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -301,6 +301,50 @@ ErrStatus efuse_user_data_write(uint32_t size, uint8_t buf[])
 }
 
 /*!
+    \brief      read ctl0 configuration
+    \param[out] config: config value after system reset
+    \retval     ErrStatus: ERROR or SUCCESS
+*/
+ErrStatus efuse_ctl0_read(uint32_t config[])
+{
+    config[0] = REG32(EFUSE + 0x08U);
+    return SUCCESS;
+}
+
+/*!
+    \brief      read ctl1 configuration
+    \param[out] config: config value after system reset
+    \retval     ErrStatus: ERROR or SUCCESS
+*/
+ErrStatus efuse_ctl1_read(uint32_t config[])
+{
+    config[0] = REG32(EFUSE + 0x0CU);
+    return SUCCESS;
+}
+
+/*!
+    \brief      read fp configuration
+    \param[out] config: config value after system reset
+    \retval     ErrStatus: ERROR or SUCCESS
+*/
+ErrStatus efuse_fp_read(uint32_t config[])
+{
+    config[0] = REG32(EFUSE + 0x10U);
+    return SUCCESS;
+}
+
+/*!
+    \brief      read uctl configuration
+    \param[out] config: config value after system reset
+    \retval     ErrStatus: ERROR or SUCCESS
+*/
+ErrStatus efuse_uctl_read(uint32_t config[])
+{
+    config[0] = REG32(EFUSE + 0x14U);
+    return SUCCESS;
+}
+
+/*!
     \brief      read MCU reserved value
     \param[in]  none
     \param[out] buf: MCU reserved value after system reset
@@ -353,20 +397,6 @@ void efuse_puid_read(uint32_t buf[])
     uint8_t i = 0U;
     for(i = 0U; i < 4U; i++) {
         buf[i] = REG32(EFUSE + 0x54U  + 0x04U * i);
-    }
-}
-
-/*!
-    \brief      read huk key
-    \param[in]  none
-    \param[out] buf: huk key data after system reset
-    \retval     none
-*/
-void efuse_huk_key_read(uint32_t buf[])
-{
-    uint8_t i = 0U;
-    for(i = 0U; i < 4U; i++) {
-        buf[i] = REG32(EFUSE + 0x64U + 0x04U * i);
     }
 }
 

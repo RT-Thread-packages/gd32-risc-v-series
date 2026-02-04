@@ -2,11 +2,11 @@
     \file    gd32vw55x_hau.h
     \brief   definitions for the HAU
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -138,7 +138,7 @@ typedef struct
 #define MULTIPLE_DMA_NO_DIGEST            HAU_CTL_MDS                                    /*!< multiple DMA transfers needed and CALEN bit is not automatically set at the end of a DMA transfer */
 
 /* hau_cfg register value */
-#define CFG_VBL(regval)                   (BITS(0,4) & (((uint32_t)(regval))))           /*!< write value to HAU_CFG_VBL bit field */
+#define CFG_VBL(regval)                   (BITS(0,4) & ((regval) << 0U))                  /*!< write value to HAU_CFG_VBL bit field */
 
 /* hau_inten register value */
 #define HAU_INT_DATA_INPUT                HAU_INTEN_DIIE                                 /*!< a new block can be entered into the IN buffer */
@@ -219,5 +219,7 @@ void hau_interrupt_disable(uint32_t interrupt);
 FlagStatus hau_interrupt_flag_get(uint32_t int_flag);
 /* clear the HAU interrupt flag status */
 void hau_interrupt_flag_clear(uint32_t int_flag);
+/* HAU SHA/MD5 digest read in HASH mode */
+void hau_sha_md5_digest_read(uint32_t algo, uint8_t *output);
 
 #endif /* GD32VW55X_HAU_H */

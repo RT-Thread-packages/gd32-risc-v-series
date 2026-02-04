@@ -34,10 +34,8 @@
  extern "C" {
 #endif
 
-#include "core_feature_base.h"
-
-
-#if defined(__CCM_PRESENT) && (__CCM_PRESENT == 1)
+#if (defined(__ICACHE_PRESENT) && (__ICACHE_PRESENT == 1)) \
+    || (defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1))
 
 /* ##########################  Cache functions  #################################### */
 /**
@@ -69,7 +67,7 @@ typedef enum CCM_OP_FINFO {
     CCM_OP_EXCEED_ERR = 0x1,            /*!< Exceed the the number of lockable ways(N-Way I/D-Cache, lockable is N-1) */
     CCM_OP_PERM_CHECK_ERR = 0x2,        /*!< PMP/sPMP/Page-Table X(I-Cache)/R(D-Cache) permission check failed, or belong to Device/Non-Cacheable address range */
     CCM_OP_REFILL_BUS_ERR = 0x3,        /*!< Refill has Bus Error */
-    CCM_OP_ECC_ERR = 0x4                /*!< Deprecated, ECC Error, this error code is removed in later Nuclei CCM RTL design, please don't use it */
+    CCM_OP_ECC_ERR = 0x4                /*!< ECC Error */
 } CCM_OP_FINFO_Type;
 
 /**
@@ -100,11 +98,8 @@ typedef struct CacheInfo {
     uint32_t size;                      /*!< Cache total size in bytes */
 } CacheInfo_Type;
 
-#if __riscv_xlen == 32
-#define CCM_SUEN_SUEN_Msk               (0xFFFFFFFFUL)              /*!< CSR CCM_SUEN: SUEN Mask */
-#else
-#define CCM_SUEN_SUEN_Msk               (0xFFFFFFFFFFFFFFFFUL)      /*!< CSR CCM_SUEN: SUEN Mask */
-#endif
+#define CCM_SUEN_SUEN_Pos               0U                              /*!< CSR CCM_SUEN: SUEN bit Position */
+#define CCM_SUEN_SUEN_Msk               (1UL << CCM_SUEN_SUEN_Pos)      /*!< CSR CCM_SUEN: SUEN Mask */
 
 /**
  * \brief  Enable CCM operation in Supervisor/User Mode
@@ -164,23 +159,6 @@ __STATIC_FORCEINLINE void FlushPipeCCM(void)
  */
 
 /**
- * \brief  Check ICache Unit Present or Not
- * \details
- * This function check icache unit present or not via mcfg_info csr
- * \remarks
- * - This function might not work for some old nuclei processors
- * - Please make sure the version of your nuclei processor contain ICACHE bit in mcfg_info
- * \return 1 if present otherwise 0
-*/
-__STATIC_FORCEINLINE int32_t ICachePresent(void)
-{
-    if (__RV_CSR_READ(CSR_MCFG_INFO) & MCFG_INFO_ICACHE) {
-        return 1;
-    }
-    return 0;
-}
-
-/**
  * \brief  Enable ICache
  * \details
  * This function enable I-Cache
@@ -192,7 +170,7 @@ __STATIC_FORCEINLINE int32_t ICachePresent(void)
 */
 __STATIC_FORCEINLINE void EnableICache(void)
 {
-    __RV_CSR_SET(CSR_MCACHE_CTL, MCACHE_CTL_IC_EN);
+    __RV_CSR_SET(CSR_MCACHE_CTL, CSR_MCACHE_CTL_IE);
 }
 
 /**
@@ -207,40 +185,9 @@ __STATIC_FORCEINLINE void EnableICache(void)
  */
 __STATIC_FORCEINLINE void DisableICache(void)
 {
-    __RV_CSR_CLEAR(CSR_MCACHE_CTL, MCACHE_CTL_IC_EN);
+    __RV_CSR_CLEAR(CSR_MCACHE_CTL, CSR_MCACHE_CTL_IE);
 }
 
-/**
- * \brief  Enable ICache ECC
- * \details
- * This function enable I-Cache ECC
- * \remarks
- * - This function can be called in M-Mode only.
- * - This \ref CSR_MCACHE_CTL register control I Cache ECC enable.
- * \sa
- * - \ref DisableICacheECC
-*/
-__STATIC_FORCEINLINE void EnableICacheECC(void)
-{
-    __RV_CSR_SET(CSR_MCACHE_CTL, MCACHE_CTL_IC_ECC_EN);
-}
-
-/**
- * \brief  Disable ICache ECC
- * \details
- * This function disable I-Cache ECC
- * \remarks
- * - This function can be called in M-Mode only.
- * - This \ref CSR_MCACHE_CTL register control I Cache ECC enable.
- * \sa
- * - \ref EnableICacheECC
-*/
-__STATIC_FORCEINLINE void DisableICacheECC(void)
-{
-    __RV_CSR_CLEAR(CSR_MCACHE_CTL, MCACHE_CTL_IC_ECC_EN);
-}
-
-#if defined(__CCM_PRESENT) && (__CCM_PRESENT == 1)
 /**
  * \brief  Get I-Cache Information
  * \details
@@ -256,7 +203,37 @@ __STATIC_FORCEINLINE int32_t GetICacheInfo(CacheInfo_Type *info)
     if (info == NULL) {
         return -1;
     }
-    CSR_MICFGINFO_Type csr_ccfg = (CSR_MICFGINFO_Type)__RV_CSR_READ(CSR_MICFG_INFO);
+    uint32_t csr = __RV_CSR_READ(CSR_MICFG_INFO);
+    CSR_MICFGINFO_Type csr_ccfg = *((CSR_MICFGINFO_Type *) &csr);
+
+    info->setperway = (1 << csr_ccfg.b.set) << 3;
+    info->ways = (1 + csr_ccfg.b.way);
+    if (csr_ccfg.b.lsize == 0) {
+        info->linesize = 0;
+    } else {
+        info->linesize = (1 << (csr_ccfg.b.lsize - 1)) << 3;
+    }
+    info->size = info->setperway * info->ways * info->linesize;
+    return 0;
+}
+
+/**
+ * \brief  Get D-Cache Information
+ * \details
+ * This function get D-Cache Information
+ * \remarks
+ * - This function can be called in M-Mode only.
+ * - You can use this function in combination with cache lines operations
+ * \sa
+ * - \ref GetICacheInfo
+ */
+__STATIC_FORCEINLINE int32_t GetDCacheInfo(CacheInfo_Type *info)
+{
+    if (info == NULL) {
+        return -1;
+    }
+    uint32_t csr = __RV_CSR_READ(CSR_MDCFG_INFO);
+    CSR_MDCFGINFO_Type csr_ccfg = *((CSR_MDCFGINFO_Type *) &csr);
     info->setperway = (1 << csr_ccfg.b.set) << 3;
     info->ways = (1 + csr_ccfg.b.way);
     if (csr_ccfg.b.lsize == 0) {
@@ -415,17 +392,13 @@ __STATIC_FORCEINLINE unsigned long MLockICacheLines(unsigned long addr, unsigned
 {
     if (cnt > 0) {
         unsigned long i;
-        unsigned long fail_info = CCM_OP_SUCCESS;
         __RV_CSR_WRITE(CSR_CCM_MBEGINADDR, addr);
         for (i = 0; i < cnt; i++) {
             __RV_CSR_WRITE(CSR_CCM_MCOMMAND, CCM_IC_LOCK);
-            fail_info = __RV_CSR_READ(CSR_CCM_MDATA);
-            if (CCM_OP_SUCCESS != fail_info) {
-                return fail_info;
-            }
         }
+        return __RV_CSR_READ(CSR_CCM_MDATA);
     } else {
-        return CCM_OP_SUCCESS;
+        return 0;
     }
 }
 
@@ -462,17 +435,13 @@ __STATIC_FORCEINLINE unsigned long SLockICacheLines(unsigned long addr, unsigned
 {
     if (cnt > 0) {
         unsigned long i;
-        unsigned long fail_info = CCM_OP_SUCCESS;
         __RV_CSR_WRITE(CSR_CCM_SBEGINADDR, addr);
         for (i = 0; i < cnt; i++) {
             __RV_CSR_WRITE(CSR_CCM_SCOMMAND, CCM_IC_LOCK);
-            fail_info = __RV_CSR_READ(CSR_CCM_SDATA);
-            if (CCM_OP_SUCCESS != fail_info) {
-                return fail_info;
-            }
         }
+        return __RV_CSR_READ(CSR_CCM_SDATA);
     } else {
-        return CCM_OP_SUCCESS;
+        return 0;
     }
 }
 
@@ -509,17 +478,13 @@ __STATIC_FORCEINLINE unsigned long ULockICacheLines(unsigned long addr, unsigned
 {
     if (cnt > 0) {
         unsigned long i;
-        unsigned long fail_info = CCM_OP_SUCCESS;
         __RV_CSR_WRITE(CSR_CCM_UBEGINADDR, addr);
         for (i = 0; i < cnt; i++) {
             __RV_CSR_WRITE(CSR_CCM_UCOMMAND, CCM_IC_LOCK);
-            fail_info = __RV_CSR_READ(CSR_CCM_UDATA);
-            if (CCM_OP_SUCCESS != fail_info) {
-                return fail_info;
-            }
         }
+        return __RV_CSR_READ(CSR_CCM_UDATA);
     } else {
-        return CCM_OP_SUCCESS;
+        return 0;
     }
 }
 
@@ -675,7 +640,7 @@ __STATIC_FORCEINLINE void UInvalICache(void)
 {
     __RV_CSR_WRITE(CSR_CCM_UCOMMAND, CCM_IC_INVAL_ALL);
 }
-#endif /* defined(__CCM_PRESENT) && (__CCM_PRESENT == 1) */
+
 /** @} */ /* End of Doxygen Group NMSIS_Core_ICache */
 #endif /* defined(__ICACHE_PRESENT) && (__ICACHE_PRESENT == 1) */
 
@@ -686,24 +651,6 @@ __STATIC_FORCEINLINE void UInvalICache(void)
  * \brief    Functions that configure Data Cache.
  * @{
  */
-
-/**
- * \brief  Check DCache Unit Present or Not
- * \details
- * This function check dcache unit present or not via mcfg_info csr
- * \remarks
- * - This function might not work for some old nuclei processors
- * - Please make sure the version of your nuclei processor contain DCACHE bit in mcfg_info
- * \return 1 if present otherwise 0
-*/
-__STATIC_FORCEINLINE int32_t DCachePresent(void)
-{
-    if (__RV_CSR_READ(CSR_MCFG_INFO) & MCFG_INFO_DCACHE) {
-        return 1;
-    }
-    return 0;
-}
-
 /**
  * \brief  Enable DCache
  * \details
@@ -716,7 +663,7 @@ __STATIC_FORCEINLINE int32_t DCachePresent(void)
 */
 __STATIC_FORCEINLINE void EnableDCache(void)
 {
-    __RV_CSR_SET(CSR_MCACHE_CTL, MCACHE_CTL_DC_EN);
+    __RV_CSR_SET(CSR_MCACHE_CTL, CSR_MCACHE_CTL_DE);
 }
 
 /**
@@ -731,65 +678,7 @@ __STATIC_FORCEINLINE void EnableDCache(void)
  */
 __STATIC_FORCEINLINE void DisableDCache(void)
 {
-    __RV_CSR_CLEAR(CSR_MCACHE_CTL, MCACHE_CTL_DC_EN);
-}
-
-/**
- * \brief  Enable DCache ECC
- * \details
- * This function enable D-Cache ECC
- * \remarks
- * - This function can be called in M-Mode only.
- * - This \ref CSR_MCACHE_CTL register control D Cache ECC enable.
- * \sa
- * - \ref DisableDCacheECC
-*/
-__STATIC_FORCEINLINE void EnableDCacheECC(void)
-{
-    __RV_CSR_SET(CSR_MCACHE_CTL, MCACHE_CTL_DC_ECC_EN);
-}
-
-/**
- * \brief  Disable DCache ECC
- * \details
- * This function disable D-Cache ECC
- * \remarks
- * - This function can be called in M-Mode only.
- * - This \ref CSR_MCACHE_CTL register control D Cache ECC enable.
- * \sa
- * - \ref EnableDCacheECC
-*/
-__STATIC_FORCEINLINE void DisableDCacheECC(void)
-{
-    __RV_CSR_CLEAR(CSR_MCACHE_CTL, MCACHE_CTL_DC_ECC_EN);
-}
-
-#if defined(__CCM_PRESENT) && (__CCM_PRESENT == 1)
-/**
- * \brief  Get D-Cache Information
- * \details
- * This function get D-Cache Information
- * \remarks
- * - This function can be called in M-Mode only.
- * - You can use this function in combination with cache lines operations
- * \sa
- * - \ref GetICacheInfo
- */
-__STATIC_FORCEINLINE int32_t GetDCacheInfo(CacheInfo_Type *info)
-{
-    if (info == NULL) {
-        return -1;
-    }
-    CSR_MDCFGINFO_Type csr_ccfg = (CSR_MDCFGINFO_Type)__RV_CSR_READ(CSR_MDCFG_INFO);
-    info->setperway = (1 << csr_ccfg.b.set) << 3;
-    info->ways = (1 + csr_ccfg.b.way);
-    if (csr_ccfg.b.lsize == 0) {
-        info->linesize = 0;
-    } else {
-        info->linesize = (1 << (csr_ccfg.b.lsize - 1)) << 3;
-    }
-    info->size = info->setperway * info->ways * info->linesize;
-    return 0;
+    __RV_CSR_CLEAR(CSR_MCACHE_CTL, CSR_MCACHE_CTL_DE);
 }
 
 /**
@@ -1161,17 +1050,13 @@ __STATIC_FORCEINLINE unsigned long MLockDCacheLines(unsigned long addr, unsigned
 {
     if (cnt > 0) {
         unsigned long i;
-        unsigned long fail_info = CCM_OP_SUCCESS;
         __RV_CSR_WRITE(CSR_CCM_MBEGINADDR, addr);
         for (i = 0; i < cnt; i++) {
             __RV_CSR_WRITE(CSR_CCM_MCOMMAND, CCM_DC_LOCK);
-            fail_info = __RV_CSR_READ(CSR_CCM_MDATA);
-            if (CCM_OP_SUCCESS != fail_info) {
-                return fail_info;
-            }
         }
+        return __RV_CSR_READ(CSR_CCM_MDATA);
     } else {
-        return CCM_OP_SUCCESS;
+        return 0;
     }
 }
 
@@ -1208,17 +1093,13 @@ __STATIC_FORCEINLINE unsigned long SLockDCacheLines(unsigned long addr, unsigned
 {
     if (cnt > 0) {
         unsigned long i;
-        unsigned long fail_info = CCM_OP_SUCCESS;
         __RV_CSR_WRITE(CSR_CCM_SBEGINADDR, addr);
         for (i = 0; i < cnt; i++) {
             __RV_CSR_WRITE(CSR_CCM_SCOMMAND, CCM_DC_LOCK);
-            fail_info = __RV_CSR_READ(CSR_CCM_SDATA);
-            if (CCM_OP_SUCCESS != fail_info) {
-                return fail_info;
-            }
         }
+        return __RV_CSR_READ(CSR_CCM_SDATA);
     } else {
-        return CCM_OP_SUCCESS;
+        return 0;
     }
 }
 
@@ -1255,17 +1136,13 @@ __STATIC_FORCEINLINE unsigned long ULockDCacheLines(unsigned long addr, unsigned
 {
     if (cnt > 0) {
         unsigned long i;
-        unsigned long fail_info = CCM_OP_SUCCESS;
         __RV_CSR_WRITE(CSR_CCM_UBEGINADDR, addr);
         for (i = 0; i < cnt; i++) {
             __RV_CSR_WRITE(CSR_CCM_UCOMMAND, CCM_DC_LOCK);
-            fail_info = __RV_CSR_READ(CSR_CCM_UDATA);
-            if (CCM_OP_SUCCESS != fail_info) {
-                return fail_info;
-            }
         }
+        return __RV_CSR_READ(CSR_CCM_UDATA);
     } else {
-        return CCM_OP_SUCCESS;
+        return 0;
     }
 }
 
@@ -1507,7 +1384,6 @@ __STATIC_FORCEINLINE void UFlushInvalDCache(void)
 {
     __RV_CSR_WRITE(CSR_CCM_UCOMMAND, CCM_DC_WBINVAL_ALL);
 }
-#endif /* defined(__CCM_PRESENT) && (__CCM_PRESENT == 1) */
 
 /** @} */ /* End of Doxygen Group NMSIS_Core_DCache */
 #endif /* defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1) */
@@ -1515,4 +1391,4 @@ __STATIC_FORCEINLINE void UFlushInvalDCache(void)
 #ifdef __cplusplus
 }
 #endif
-#endif /* __CORE_FEATURE_CACHE_H__ */
+#endif /** __CORE_FEATURE_CACHE_H__ */

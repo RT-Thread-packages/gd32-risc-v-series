@@ -66,8 +66,8 @@
     .weak     I2C0_WKUP_IRQHandler              # I2C0 Wakeup
     .weak     USART0_WKUP_IRQHandler            # USART0 Wakeup
     .weak     TIMER5_IRQHandler                 # TIMER5
-    .weak     WIFI_TRIGGER_IRQHandler           # WIFI Protocol trigger interrupt
-    .weak     WIFI_MAC_IRQHandler               # WIFI MAC interrupt
+    .weak     WIFI_PROT_IRQHandler              # WIFI Protocol trigger interrupt
+    .weak     WIFI_INTGEN_IRQHandler            # WIFI Intgen interrupt
     .weak     WIFI_TX_IRQHandler                # WIFI Tx interrupt
     .weak     WIFI_RX_IRQHandler                # WIFI Rx interrupt
     .weak     LA_IRQHandler                     # LA interrupt
@@ -82,21 +82,21 @@
     .weak     ISO_BT_STAMP5_IRQHandler          # ISO Bluetooth TimeStamp interrupt5
     .weak     ISO_BT_STAMP6_IRQHandler          # ISO Bluetooth TimeStamp interrupt6
     .weak     ISO_BT_STAMP7_IRQHandler          # ISO Bluetooth TimeStamp interrupt7
-    .weak     PMU_IRQHandler                    # PMU
+    .weak     BLE_POWER_STATUS_IRQHandler       # BLE power status interrupt
     .weak     CAU_IRQHandler                    # CAU
     .weak     HAU_TRNG_IRQHandler               # HAU and TRNG
     .weak     WIFI_INT_IRQHandler               # WIFI interrupt
-    .weak     WIFI_SW_TRIG_IRQHandler           # SW triggered interrupt
-    .weak     WIFI_FINE_TIMER_TARGET_IRQHandler # Fine Timer Target interrupt
-    .weak     WIFI_STAMP_TARGET1_IRQHandler     # Timestamp Target 1 interrupt
-    .weak     WIFI_STAMP_TARGET2_IRQHandler     # Timestamp Target 2 interrupt
-    .weak     WIFI_STAMP_TARGET3_IRQHandler     # Timestamp Target 3 interrupt
-    .weak     WIFI_ENCRYPTION_ENGINE_IRQHandler # Encryption engine Interrupt
-    .weak     WIFI_SLEEP_MODE_IRQHandler        # Sleep Mode Interrupt
-    .weak     WIFI_HALF_SLOT_IRQHandler         # Half Slot interrupt
-    .weak     WIFI_FIFO_ACTIVITY_IRQHandler     # FIFO Activity interrupt
-    .weak     WIFI_ERROR_IRQHandler             # Error Interrupt
-    .weak     WIFI_FREQ_SELECT_IRQHandler       # Frequency Selection Interrupt
+    .weak     BLE_SW_TRIG_IRQHandler            # SW triggered interrupt
+    .weak     BLE_FINE_TIMER_TARGET_IRQHandler  # Fine Timer Target interrupt
+    .weak     BLE_STAMP_TARGET1_IRQHandler      # Timestamp Target 1 interrupt
+    .weak     BLE_STAMP_TARGET2_IRQHandler      # Timestamp Target 2 interrupt
+    .weak     BLE_STAMP_TARGET3_IRQHandler      # Timestamp Target 3 interrupt
+    .weak     BLE_ENCRYPTION_ENGINE_IRQHandler  # Encryption engine Interrupt
+    .weak     BLE_SLEEP_MODE_IRQHandler         # Sleep Mode Interrupt
+    .weak     BLE_HALF_SLOT_IRQHandler          # Half Slot interrupt
+    .weak     BLE_FIFO_ACTIVITY_IRQHandler      # FIFO Activity interrupt
+    .weak     BLE_ERROR_IRQHandler              # Error Interrupt
+    .weak     BLE_FREQ_SELECT_IRQHandler        # Frequency Selection Interrupt
     .weak     EFUSE_IRQHandler                  # EFUSE
     .weak     QSPI_IRQHandler                   # QUADSPI
     .weak     PKCAU_IRQHandler                  # PKCAU
@@ -177,8 +177,8 @@ vector_base:
     .word     USART0_WKUP_IRQHandler            # USART0 Wakeup
     .word     0                                 # Reserved
     .word     TIMER5_IRQHandler                 # TIMER5
-    .word     WIFI_TRIGGER_IRQHandler           # WIFI Protocol trigger
-    .word     WIFI_MAC_IRQHandler               # WIFI MAC
+    .word     WIFI_PROT_IRQHandler              # WIFI Protocol trigger
+    .word     WIFI_INTGEN_IRQHandler            # WIFI Intgen
     .word     WIFI_TX_IRQHandler                # WIFI Tx
     .word     WIFI_RX_IRQHandler                # WIFI Rx
     .word     0                                 # Reserved
@@ -198,24 +198,24 @@ vector_base:
     .word     ISO_BT_STAMP5_IRQHandler          # ISO Bluetooth TimeStamp interrupt5
     .word     ISO_BT_STAMP6_IRQHandler          # ISO Bluetooth TimeStamp interrupt6
     .word     ISO_BT_STAMP7_IRQHandler          # ISO Bluetooth TimeStamp interrupt7
-    .word     PMU_IRQHandler                    # PMU
+    .word     BLE_POWER_STATUS_IRQHandler       # BLE power status interrupt
     .word     0                                 # Reserved
     .word     0                                 # Reserved
     .word     CAU_IRQHandler                    # CAU
     .word     HAU_TRNG_IRQHandler               # HAU and TRNG
     .word     0                                 # Reserved
     .word     WIFI_INT_IRQHandler               # WIFI interrupt
-    .word     WIFI_SW_TRIG_IRQHandler           # SW triggered interrupt
-    .word     WIFI_FINE_TIMER_TARGET_IRQHandler # Fine Timer Target interrupt
-    .word     WIFI_STAMP_TARGET1_IRQHandler     # Timestamp Target 1 interrupt
-    .word     WIFI_STAMP_TARGET2_IRQHandler     # Timestamp Target 2 interrupt
-    .word     WIFI_STAMP_TARGET3_IRQHandler     # Timestamp Target 3 interrupt
-    .word     WIFI_ENCRYPTION_ENGINE_IRQHandler # Encryption engine Interrupt
-    .word     WIFI_SLEEP_MODE_IRQHandler        # Sleep Mode interrupt
-    .word     WIFI_HALF_SLOT_IRQHandler         # Half Slot interrupt
-    .word     WIFI_FIFO_ACTIVITY_IRQHandler     # FIFO Activity interrupt
-    .word     WIFI_ERROR_IRQHandler             # Error interrupt
-    .word     WIFI_FREQ_SELECT_IRQHandler       # Frequency Selection iterrupt
+    .word     BLE_SW_TRIG_IRQHandler            # SW triggered interrupt
+    .word     BLE_FINE_TIMER_TARGET_IRQHandler  # Fine Timer Target interrupt
+    .word     BLE_STAMP_TARGET1_IRQHandler      # Timestamp Target 1 interrupt
+    .word     BLE_STAMP_TARGET2_IRQHandler      # Timestamp Target 2 interrupt
+    .word     BLE_STAMP_TARGET3_IRQHandler      # Timestamp Target 3 interrupt
+    .word     BLE_ENCRYPTION_ENGINE_IRQHandler  # Encryption engine Interrupt
+    .word     BLE_SLEEP_MODE_IRQHandler         # Sleep Mode interrupt
+    .word     BLE_HALF_SLOT_IRQHandler          # Half Slot interrupt
+    .word     BLE_FIFO_ACTIVITY_IRQHandler      # FIFO Activity interrupt
+    .word     BLE_ERROR_IRQHandler              # Error interrupt
+    .word     BLE_FREQ_SELECT_IRQHandler        # Frequency Selection iterrupt
     .word     EFUSE_IRQHandler                  # EFUSE
     .word     QSPI_IRQHandler                   # QUADSPI
     .word     PKCAU_IRQHandler                  # PKCAU
@@ -265,6 +265,22 @@ _start:
     csrci CSR_MCOUNTINHIBIT, 0x5
 
     /* ===== Startup Stage 3 ===== */
+    /* Load code to sram - DISABLED for RT-Thread as linker script doesn't define these symbols */
+    /* RT-Thread's linker script doesn't allocate SRAM code section */
+
+    la a0, _sicode
+    la a1, _scode
+    la a2, _ecode
+    bgeu a1, a2, 2f
+1:
+    lw t0, (a0)
+    sw t0, (a1)
+    addi a0, a0, 4
+    addi a1, a1, 4
+    bltu a1, a2, 1b
+
+2:
+
     /* Load data section */
     la a0, _data_lma
     la a1, _data

@@ -2,11 +2,11 @@
     \file    gd32vw55x_hau_sha_md5.c
     \brief   HAU_SHA_MD5 driver
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -36,8 +36,6 @@ OF SUCH DAMAGE.
 
 #define SHAMD5_BSY_TIMEOUT    ((uint32_t)0x00010000U)
 
-/* HAU SHA/MD5 digest read in HASH mode */
-static void hau_sha_md5_digest_read(uint32_t algo, uint8_t *output);
 /* HAU digest calculate process in HASH mode */
 static ErrStatus hau_hash_calculate(uint32_t algo, uint8_t *input, uint32_t in_length, uint8_t *output);
 /* HAU digest calculate process in HMAC mode */
@@ -177,7 +175,7 @@ ErrStatus hau_hmac_md5(uint8_t *key, uint32_t keysize, uint8_t *input, uint32_t 
     \param[out] output: the result digest
     \retval     none
 */
-static void hau_sha_md5_digest_read(uint32_t algo, uint8_t *output)
+void hau_sha_md5_digest_read(uint32_t algo, uint8_t *output)
 {
     hau_digest_parameter_struct digest_para;
     uint32_t outputaddr = (uint32_t)output;
@@ -401,7 +399,7 @@ static ErrStatus hau_hmac_calculate(uint32_t algo, uint8_t *key, uint32_t keysiz
             hau_digest_calculation_enable();
 
             /* wait until the busy flag is reset */
-            counter = 0U;
+            counter =0U;
             do{
                 busystatus = hau_flag_get(HAU_FLAG_BUSY);
                 counter++;

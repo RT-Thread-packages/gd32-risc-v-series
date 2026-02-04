@@ -2,11 +2,11 @@
     \file    gd32vw55x_pkcau.c
     \brief   PKCAU driver
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -1179,6 +1179,7 @@ static void pkcau_memcpy_value(uint32_t offset, uint32_t value)
     *addr = value;
 }
 
+#ifdef PKCAU_BIG_ENDIAN
 /*!
     \brief      copy operand with EOS or ROS to PKCAU RAM
     \param[in]  offset: RAM address offset to PKCAU base address
@@ -1240,7 +1241,68 @@ static void pkcau_memread(uint32_t offset, uint8_t* buf, uint32_t size)
     if(size > 0U) {
         data = *(uint32_t*)((uint32_t)(PKCAU_BASE + offset + i));
         for(j = 0U; j < size; j++) {
-            buf[j] = (uint8_t)((data >> (((size - 1U - j) & 0x03U) * 8U)) & 0xffU);
+            buf[j] = (uint8_t)((data >> ((size - 1U - j) * 8U)) & 0xffU);
         }
     }
 }
+
+#else /* PKCAU_BIG_ENDIAN */
+
+/*!
+  \brief  Copy uint8_t array to uint32_t array to fit PKCAU number representation.
+  \param  offset RAM offset to write
+  \param  operand Pointer to source
+  \param  size Number of uint8_t to copy (must be multiple of 4)
+  \retval dst
+*/
+static void pkcau_memcpy_operand(uint32_t offset, const uint8_t operand[], uint32_t size)
+{
+    uint32_t num = size / 4;
+    uint32_t resi = size % 4;
+    uint32_t* para = (uint32_t *)operand;
+
+    uint32_t* addr = (uint32_t*)(PKCAU_BASE + offset);
+
+    for (int i = 0; i < num; i++)
+        *addr++ = *para++;
+
+    if(resi != 0)
+        *addr++ = (*para) & ((1 << (resi * 8)) - 1);
+
+    /* an additional word 0x00000000 is expected by the PKCAU */
+    *addr = 0x0;
+}
+
+/*!
+    \brief      read result from PKCAU RAM
+    \param[in]  offset: RAM address offset to PKCAU base address
+    \param[out] buf: big endian result buffer, the left most byte from the PKCAU should be in the first element of buffer
+    \param[in]  size: number of byte to read
+    \retval     none
+*/
+static void pkcau_memread(uint32_t offset, uint8_t *buf, uint32_t size)
+{
+    uint32_t  data = 0U, i = 0U, j = 0U;
+
+    /* read data from PKCAU RAM */
+    while(size >= 4U){
+        data = *(uint32_t*)((uint32_t)(PKCAU_BASE + offset + i));
+        i = i + 4U;
+
+        /* data in PKCAU RAM is big endian */
+        buf[i-4U] = (uint8_t)(data & 0xffU);
+        buf[i-3U] = (uint8_t)((data >> 8U) & 0xffU);
+        buf[i-2U] = (uint8_t)((data >> 16U) & 0xffU);
+        buf[i-1U] = (uint8_t)((data >> 24U) & 0xffU);
+        size -= 4U;
+    }
+    /* read data from PKCAU RAM which is not a multiple of four */
+    if(size > 0U){
+        data = *(uint32_t*)((uint32_t)(PKCAU_BASE + offset + i));
+        for(j = 0U; j < size; j++){
+            buf[i + j] = (uint8_t)((data >> (j * 8U)) & 0xffU);
+        }
+    }
+}
+
+#endif /* PKCAU_BIG_ENDIAN */
