@@ -2,11 +2,11 @@
     \file    gd32vw55x_usart.c
     \brief   USART driver
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -416,7 +416,6 @@ void usart_data_transmit(uint32_t usart_periph, uint16_t data)
     \param[out] none
     \retval     data of received
 */
-
 uint16_t usart_data_receive(uint32_t usart_periph)
 {
     return (uint16_t)(GET_BITS(USART_RDATA(usart_periph), 0U, 8U));

@@ -21,6 +21,21 @@
 
 #include "riscv_encoding.h"
 
+#define portFCONTEXT_SIZE       ( 20 * FPREGBYTES + 2 * REGBYTES )
+
+/**
+* \brief  redirect vector table
+*/
+/*    Need to align 4 byte for RV32, 8 Byte for RV64 */
+.align 2
+.global redirect_vector_table
+.weak redirect_vector_table
+/* void redirect_vector_table(uint32_t) */
+redirect_vector_table:
+    /* update the mtvt*/
+    csrw CSR_MTVT, a0
+       ret
+
 /**
  * \brief  Global interrupt disabled
  * \details
@@ -42,6 +57,8 @@
 */
 /* Save caller registers */
 .macro SAVE_CONTEXT
+    /* only used in single-privileged mode, interrupt nested sp and mscratch do not exchange */
+    csrrw sp, CSR_MSCRATCHCSWL, sp
     /* Allocate stack space for context saving */
 #ifndef __riscv_32e
     addi sp, sp, -20*REGBYTES
@@ -68,6 +85,13 @@
     STORE x30, 18*REGBYTES(sp)
     STORE x31, 19*REGBYTES(sp)
 #endif /* __riscv_32e */
+
+    /* Store CSR mcause to stack using pushmcause */
+    csrrwi  x0, CSR_PUSHMCAUSE, 11
+    /* Store CSR mepc to stack using pushmepc */
+    csrrwi  x0, CSR_PUSHMEPC, 12
+    /* Store CSR msub to stack using pushmsub */
+    csrrwi  x0, CSR_PUSHMSUBM, 13
 .endm
 
 /**
@@ -80,6 +104,14 @@
  */
 /* Restore caller registers */
 .macro RESTORE_CONTEXT
+    /* Restore the necessary CSR registers */
+    LOAD x5,  13*REGBYTES(sp)
+    csrw CSR_MSUBM, x5
+    LOAD x5,  12*REGBYTES(sp)
+    csrw CSR_MEPC, x5
+    LOAD x5,  11*REGBYTES(sp)
+    csrw CSR_MCAUSE, x5
+
     LOAD x1, 0*REGBYTES(sp)
     LOAD x4, 1*REGBYTES(sp)
     LOAD x5, 2*REGBYTES(sp)
@@ -106,34 +138,67 @@
     addi sp, sp, 14*REGBYTES
 #endif /* __riscv_32e */
 
+    /* only used in single-privileged mode, interrupt nested sp and mscratch do not exchange */
+    csrrw sp, CSR_MSCRATCHCSWL, sp
 .endm
 
-/**
- * \brief  Macro for save necessary CSRs to stack
- * \details
- * This macro store MCAUSE, MEPC, MSUBM to stack.
- */
-.macro SAVE_CSR_CONTEXT
-    /* Store CSR mcause to stack using pushmcause */
-    csrrwi  x0, CSR_PUSHMCAUSE, 11
-    /* Store CSR mepc to stack using pushmepc */
-    csrrwi  x0, CSR_PUSHMEPC, 12
-    /* Store CSR msub to stack using pushmsub */
-    csrrwi  x0, CSR_PUSHMSUBM, 13
+.macro SAVE_FCONTEXT
+#ifdef __riscv_flen
+    addi  sp, sp, -portFCONTEXT_SIZE
+    csrr  t0, CSR_FCSR
+    STORE t0, (portFCONTEXT_SIZE - REGBYTES)(sp)
+
+    FPSTORE f0, 0*FPREGBYTES(sp)
+    FPSTORE f1, 1*FPREGBYTES(sp)
+    FPSTORE f2, 2*FPREGBYTES(sp)
+    FPSTORE f3, 3*FPREGBYTES(sp)
+    FPSTORE f4, 4*FPREGBYTES(sp)
+    FPSTORE f5, 5*FPREGBYTES(sp)
+    FPSTORE f6, 6*FPREGBYTES(sp)
+    FPSTORE f7, 7*FPREGBYTES(sp)
+    FPSTORE f10, 8*FPREGBYTES(sp)
+    FPSTORE f11, 9*FPREGBYTES(sp)
+    FPSTORE f12, 10*FPREGBYTES(sp)
+    FPSTORE f13, 11*FPREGBYTES(sp)
+    FPSTORE f14, 12*FPREGBYTES(sp)
+    FPSTORE f15, 13*FPREGBYTES(sp)
+    FPSTORE f16, 14*FPREGBYTES(sp)
+    FPSTORE f17, 15*FPREGBYTES(sp)
+    FPSTORE f28, 16*FPREGBYTES(sp)
+    FPSTORE f29, 17*FPREGBYTES(sp)
+    FPSTORE f30, 18*FPREGBYTES(sp)
+    FPSTORE f31, 19*FPREGBYTES(sp)
+#endif
 .endm
 
-/**
- * \brief  Macro for restore necessary CSRs from stack
- * \details
- * This macro restore MSUBM, MEPC, MCAUSE from stack.
- */
-.macro RESTORE_CSR_CONTEXT
-    LOAD x5,  13*REGBYTES(sp)
-    csrw CSR_MSUBM, x5
-    LOAD x5,  12*REGBYTES(sp)
-    csrw CSR_MEPC, x5
-    LOAD x5,  11*REGBYTES(sp)
-    csrw CSR_MCAUSE, x5
+.macro RESTORE_FCONTEXT
+#ifdef __riscv_flen
+    /* Restore fp caller registers */
+    FPLOAD f0, 0*FPREGBYTES(sp)
+    FPLOAD f1, 1*FPREGBYTES(sp)
+    FPLOAD f2, 2*FPREGBYTES(sp)
+    FPLOAD f3, 3*FPREGBYTES(sp)
+    FPLOAD f4, 4*FPREGBYTES(sp)
+    FPLOAD f5, 5*FPREGBYTES(sp)
+    FPLOAD f6, 6*FPREGBYTES(sp)
+    FPLOAD f7, 7*FPREGBYTES(sp)
+    FPLOAD f10, 8*FPREGBYTES(sp)
+    FPLOAD f11, 9*FPREGBYTES(sp)
+    FPLOAD f12, 10*FPREGBYTES(sp)
+    FPLOAD f13, 11*FPREGBYTES(sp)
+    FPLOAD f14, 12*FPREGBYTES(sp)
+    FPLOAD f15, 13*FPREGBYTES(sp)
+    FPLOAD f16, 14*FPREGBYTES(sp)
+    FPLOAD f17, 15*FPREGBYTES(sp)
+    FPLOAD f28, 16*FPREGBYTES(sp)
+    FPLOAD f29, 17*FPREGBYTES(sp)
+    FPLOAD f30, 18*FPREGBYTES(sp)
+    FPLOAD f31, 19*FPREGBYTES(sp)
+
+    LOAD t0, (portFCONTEXT_SIZE - REGBYTES)(sp)
+    csrw CSR_FCSR, t0
+    addi sp, sp, portFCONTEXT_SIZE
+#endif
 .endm
 
 /**
@@ -153,8 +218,7 @@
 exc_entry:
     /* Save the caller saving registers (context) */
     SAVE_CONTEXT
-    /* Save the necessary CSR registers */
-    SAVE_CSR_CONTEXT
+    SAVE_FCONTEXT
 
     /*
      * Set the exception handler function arguments
@@ -166,12 +230,11 @@ exc_entry:
     /*
      * TODO: Call the exception handler function
      * By default, the function template is provided in
-     * handlers.c, you can adjust it as you want
+     * system_gd32vw55x.c, you can adjust it as you want
      */
     call core_exception_handler
 
-    /* Restore the necessary CSR registers */
-    RESTORE_CSR_CONTEXT
+    RESTORE_FCONTEXT
     /* Restore the caller saving registers (context) */
     RESTORE_CONTEXT
 
@@ -197,8 +260,11 @@ exc_entry:
 irq_entry:
     /* Save the caller saving registers (context) */
     SAVE_CONTEXT
-    /* Save the necessary CSR registers */
-    SAVE_CSR_CONTEXT
+
+    /* When mstatus->SD flag is set, the float register is dirty and need to be saved */
+    csrr t0, CSR_MSTATUS
+    bgez t0, _no_save_float_register
+    SAVE_FCONTEXT
 
     /* This special CSR read/write operation, which is actually
      * claim the CLIC to find its pending highest ID, if the ID
@@ -210,8 +276,32 @@ irq_entry:
     /* Critical section with interrupts disabled */
     DISABLE_MIE
 
-    /* Restore the necessary CSR registers */
-    RESTORE_CSR_CONTEXT
+    RESTORE_FCONTEXT
+    /* Restore the caller saving registers (context) */
+    RESTORE_CONTEXT
+
+    /* Return to regular code */
+    mret
+
+_no_save_float_register:
+#ifdef __riscv_flen
+    /* The stack size is fixed for problem locating */
+    addi sp, sp, -portFCONTEXT_SIZE
+#endif
+
+    /* This special CSR read/write operation, which is actually
+     * claim the CLIC to find its pending highest ID, if the ID
+     * is not 0, then automatically enable the mstatus.MIE, and
+     * jump to its vector-entry-label, and update the link register
+     */
+    csrrw ra, CSR_JALMNXTI, ra
+
+    /* Critical section with interrupts disabled */
+    DISABLE_MIE
+
+#ifdef __riscv_flen
+    addi sp, sp, portFCONTEXT_SIZE
+#endif
     /* Restore the caller saving registers (context) */
     RESTORE_CONTEXT
 

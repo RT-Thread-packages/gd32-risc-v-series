@@ -2,11 +2,11 @@
     \file    gd32vw55x_efuse.h
     \brief   definitions for the EFUSE
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -230,6 +230,14 @@ ErrStatus efuse_aes_key_write(uint32_t size, uint8_t buf[]);
 ErrStatus efuse_rotpk_key_write(uint32_t size, uint8_t buf[]);
 /* write user data */
 ErrStatus efuse_user_data_write(uint32_t size, uint8_t buf[]);
+/* read ctl0 */
+ErrStatus efuse_ctl0_read(uint32_t config[]);
+/* read ctl1 */
+ErrStatus efuse_ctl1_read(uint32_t config[]);
+/* read fp */
+ErrStatus efuse_fp_read(uint32_t config[]);
+/* read uctl */
+ErrStatus efuse_uctl_read(uint32_t config[]);
 /* read MCU reserved value */
 void efuse_res_read(uint32_t buf[]);
 /* read AES key */
@@ -238,8 +246,6 @@ void efuse_aes_key_read(uint32_t buf[]);
 void efuse_rotpk_key_read(uint32_t buf[]);
 /* read puid */
 void efuse_puid_read(uint32_t buf[]);
-/* read huk key */
-void efuse_huk_key_read(uint32_t buf[]);
 /* read user data */
 void efuse_user_data_read(uint32_t buf[]);
 /* get boot address information */

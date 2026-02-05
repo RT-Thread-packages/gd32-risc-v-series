@@ -1,35 +1,44 @@
 /*!
     \file    gd32vw55x.h
-    \brief   general definitions for GD32VW55x
+    \brief   general definitions for GD32VW55x SDK
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
- * Copyright (c) 2009-2019 Arm Limited. All rights reserved.
- * Copyright (c) 2019 Nuclei Limited. All rights reserved.
- * Copyright (c) 2025, GigaDevice Semiconductor Inc.
- *
- * SPDX-License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the License); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an AS IS BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
-#ifndef GD32VW55x_H
-#define GD32VW55x_H
+    Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice, this
+       list of conditions and the following disclaimer.
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
+    3. Neither the name of the copyright holder nor the names of its contributors
+       may be used to endorse or promote products derived from this software without
+       specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+OF SUCH DAMAGE.
+*/
+
+#ifndef GD32VW55X_H
+#define GD32VW55X_H
 
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
+#include "platform_def.h"
 
 #ifdef __cplusplus
  extern "C" {
@@ -51,7 +60,17 @@
 
 /* define value of high speed crystal oscillator (HXTAL) in Hz */
 #if !defined  (HXTAL_VALUE)
-#define HXTAL_VALUE  ((uint32_t)40000000)
+#if (CONFIG_PLATFORM == PLATFORM_FPGA_32103_ULTRA)
+#define HXTAL_VALUE    ((uint32_t)50000000) //ultra
+#elif (CONFIG_PLATFORM == PLATFORM_FPGA_32103_V7)
+#define HXTAL_VALUE    ((uint32_t)40000000) // v7
+#else
+#if PLATFORM_CRYSTAL == CRYSTAL_40M
+#define HXTAL_VALUE    ((uint32_t)40000000) // asic
+#elif PLATFORM_CRYSTAL == CRYSTAL_26M
+#define HXTAL_VALUE    ((uint32_t)26000000) // asic
+#endif
+#endif
 #endif /* high speed crystal oscillator value */
 
 /* define startup timeout value of high speed crystal oscillator (HXTAL) */
@@ -81,7 +100,7 @@
 
 /* GD32VW55x firmware library version number V1.0 */
 #define __GD32VW55X_STDPERIPH_VERSION_MAIN   (0x01) /*!< [31:24] main version */
-#define __GD32VW55X_STDPERIPH_VERSION_SUB1   (0x04) /*!< [23:16] sub1 version */
+#define __GD32VW55X_STDPERIPH_VERSION_SUB1   (0x00) /*!< [23:16] sub1 version */
 #define __GD32VW55X_STDPERIPH_VERSION_SUB2   (0x00) /*!< [15:8]  sub2 version */
 #define __GD32VW55X_STDPERIPH_VERSION_RC     (0x00) /*!< [7:0]  release candidate */
 #define __GD32VW55X_STDPERIPH_VERSION        ((__GD32VW55X_STDPERIPH_VERSION_MAIN << 24)\
@@ -107,13 +126,15 @@
 #define __FPU_PRESENT             2
 #endif
 #define __DSP_PRESENT             1                     /*!< Set to 1 if DSP is present */
-#if defined(__DSP_PRESENT) && (__DSP_PRESENT == 1)
-#define __RISCV_FEATURE_DSP       1
-#endif
 #define __PMP_PRESENT             1                     /*!< Set to 1 if PMP is present */
 #define __PMP_ENTRY_NUM           8                     /*!< Set to 8 or 16, the number of PMP entries */
 #define __ICACHE_PRESENT          1                     /*!< Set to 1 if I-Cache is present */
 #define __DCACHE_PRESENT          0                     /*!< Set to 1 if D-Cache is present */
+#define __Vendor_SysTickConfig    0
+
+#if defined(__DSP_PRESENT) && (__DSP_PRESENT == 1)
+#define __RISCV_FEATURE_DSP  1
+#endif
 
 /* define interrupt number */
 typedef enum IRQn
@@ -165,10 +186,10 @@ typedef enum IRQn
     I2C0_WKUP_IRQn              = 70,     /*!< I2C0 Wakeup interrupt*/
     USART0_WKUP_IRQn            = 71,     /*!< USART0 Wakeup */
     TIMER5_IRQn                 = 73,     /*!< TIMER5 global interrupt */
-    WIFI_TRIGGER_IRQn           = 74,     /*!< WIFI Protocol trigger interrupt */
-    WIFI_MAC_IRQn               = 75,     /*!< WIFI MAC interrupt */
-    WIFI_TX_IRQn                = 76,     /*!< WIFI Tx interrupt */
-    WIFI_RX_IRQn                = 77,     /*!< WIFI Rx interrupt */
+    WIFI_PROT_IRQn              = 74,     /*!< WiFi Protocol Interrupt */
+    WIFI_INTGEN_IRQn            = 75,     /*!< WiFi General Interrupt */
+    WIFI_TX_IRQn                = 76,     /*!< WiFi TX Interrupt */
+    WIFI_RX_IRQn                = 77,     /*!< WiFi RX Interrupt */
     LA_IRQn                     = 83,     /*!< LA interrupt */
     WIFI_WKUP_IRQn              = 84,     /*!< WIFI wakeup */
     BLE_WKUP_IRQn               = 85,     /*!< BLE wakeup */
@@ -181,25 +202,25 @@ typedef enum IRQn
     ISO_BT_STAMP5_IRQn          = 92,     /*!< ISO Bluetooth TimeStamp interrupt0 */
     ISO_BT_STAMP6_IRQn          = 93,     /*!< ISO Bluetooth TimeStamp interrupt0 */
     ISO_BT_STAMP7_IRQn          = 94,     /*!< ISO Bluetooth TimeStamp interrupt0 */
-    PMU_IRQn                    = 95,     /*!< PMU interrupt */
+    BLE_POWER_STATUS_IRQn       = 95,     /*!< BLE power status interrupt */
     CAU_IRQn                    = 98,     /*!< CAU interrupt */
     HAU_TRNG_IRQn               = 99,     /*!< HAU and TRNG interrupt */
     WIFI_INT_IRQn               = 101,    /*!< WIFI global interrupt */
-    WIFI_SW_TRIG_IRQn           = 102,    /*!< SW triggered interrupt */
-    WIFI_FINE_TIMER_TARGET_IRQn = 103,    /*!< Fine Timer Target interrupt */
-    WIFI_STAMP_TARGET1_IRQn     = 104,    /*!< Timestamp Target 1 interrupt */
-    WIFI_STAMP_TARGET2_IRQn     = 105,    /*!< Timestamp Target 2 interrupt */
-    WIFI_STAMP_TARGET3_IRQn     = 106,    /*!< Timestamp Target 3 interrupt */
-    WIFI_ENCRYPTION_ENGINE_IRQn = 107,    /*!< Encryption engine interrupt */
-    WIFI_SLEEP_MODE_IRQn        = 108,    /*!< Sleep Mode interrupt */
-    WIFI_HALF_SLOT_IRQn         = 109,    /*!< Half Slot interrupt */
-    WIFI_FIFO_ACTIVITY_IRQn     = 110,    /*!< FIFO Activity interrupt */
-    WIFI_ERROR_IRQn             = 111,    /*!< Error interrupt */
-    WIFI_FREQ_SELECT_IRQn       = 112,    /*!< Frequency Selection interrupt */
+    BLE_SW_TRIG_IRQn            = 102,    /*!< SW triggered interrupt */
+    BLE_FINE_TIMER_TARGET_IRQn  = 103,    /*!< Fine Timer Target interrupt */
+    BLE_STAMP_TARGET1_IRQn      = 104,    /*!< Timestamp Target 1 interrupt */
+    BLE_STAMP_TARGET2_IRQn      = 105,    /*!< Timestamp Target 2 interrupt */
+    BLE_STAMP_TARGET3_IRQn      = 106,    /*!< Timestamp Target 3 interrupt */
+    BLE_ENCRYPTION_ENGINE_IRQn  = 107,    /*!< Encryption engine interrupt */
+    BLE_SLEEP_MODE_IRQn         = 108,    /*!< Sleep Mode interrupt */
+    BLE_HALF_SLOT_IRQn          = 109,    /*!< Half Slot interrupt */
+    BLE_FIFO_ACTIVITY_IRQn      = 110,    /*!< FIFO Activity interrupt */
+    BLE_ERROR_IRQn              = 111,    /*!< Error interrupt */
+    BLE_FREQ_SELECT_IRQn        = 112,    /*!< Frequency Selection interrupt */
     EFUSE_IRQn                  = 113,    /*!< EFUSE global interrupt */
     QSPI_IRQn                   = 114,    /*!< QSPI global interrupt */
     PKCAU_IRQn                  = 115,    /*!< PKCAU global interrupt */
-    SOC_INT_MAX                 = 116,
+    SOC_INT_MAX
 } IRQn_Type;
 
 typedef enum EXCn {
@@ -231,10 +252,11 @@ typedef enum {ERROR = 0, SUCCESS = !ERROR} ErrStatus;
 #define REG32(addr)                  (*(volatile uint32_t *)(uint32_t)(addr))
 #define REG16(addr)                  (*(volatile uint16_t *)(uint32_t)(addr))
 #define REG8(addr)                   (*(volatile uint8_t *)(uint32_t)(addr))
+#ifndef BIT
 #define BIT(x)                       ((uint32_t)((uint32_t)0x00000001U<<(x)))
 #define BITS(start, end)             ((0xFFFFFFFFUL << (start)) & (0xFFFFFFFFUL >> (31U - (uint32_t)(end))))
 #define GET_BITS(regval, start, end) (((regval) & BITS((start),(end))) >> (start))
-
+#endif
 /* main flash and SRAM memory map */
 #define FLASH_BASE            ((uint32_t)0x08000000U)           /*!< main FLASH base address */
 #define SRAM_BASE             ((uint32_t)0x20000000U)           /*!< SRAM base address */
@@ -297,4 +319,5 @@ typedef enum {ERROR = 0, SUCCESS = !ERROR} ErrStatus;
 #ifdef __cplusplus
 }
 #endif
-#endif /* GD32VW55x_H */
+
+#endif /* GD32VW55X_H */

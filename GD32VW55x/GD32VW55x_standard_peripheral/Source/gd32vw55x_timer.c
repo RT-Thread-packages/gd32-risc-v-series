@@ -2,11 +2,11 @@
     \file    gd32vw55x_timer.c
     \brief   TIMER driver
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -1527,9 +1527,10 @@ void timer_hall_mode_config(uint32_t timer_periph, uint32_t hallmode)
 void timer_input_trigger_source_select(uint32_t timer_periph, uint32_t intrigger)
 {
     uint32_t TIMERxCFG_temp = 0U;
-    volatile uint32_t *TIMERxCFG_addr = 0U;
+    volatile uint32_t *TIMERxCFG_addr = NULL;
     uint8_t i = 0U;
-    switch(timer_periph){
+
+    switch(timer_periph) {
     case TIMER0:
         TIMERxCFG_addr = &SYSCFG_TIMER0CFG;
         break;
@@ -1540,19 +1541,18 @@ void timer_input_trigger_source_select(uint32_t timer_periph, uint32_t intrigger
         TIMERxCFG_addr = &SYSCFG_TIMER2CFG;
         break;
     default:
-         break;
-     }
+        break;
+    }
+
     TIMERxCFG_temp = REG32(TIMERxCFG_addr);
 
-    if((TIMERxCFG_temp & 0xFFFFFFFFU) == 0U){
+    if((TIMERxCFG_temp & 0xFFFFFFFFU) == 0U) {
         TIMERxCFG_temp = (BITS(28,31) & ((uint32_t)(intrigger) << 28U));
-    }else{
-        for(i = 0U; i < 8U; i++){
-            if((TIMERxCFG_temp & (BITS(0,3) << (i * 4U))) != 0U) {
-                TIMERxCFG_temp = ((BITS(0,3) << (i * 4U)) & ((uint32_t)(intrigger) << (i * 4U)));
-                break;
-            }
+    } else {
+        for(i = 0U; i < 8U; i++) {
+            if((TIMERxCFG_temp & (BITS(0,3) << (i * 4U))) != 0U) break;
         }
+        TIMERxCFG_temp = ((BITS(0,3) << (i * 4U)) & ((uint32_t)(intrigger) << (i * 4U)));
     }
 
     REG32(TIMERxCFG_addr) = TIMERxCFG_temp;
@@ -1599,10 +1599,11 @@ void timer_master_output_trigger_source_select(uint32_t timer_periph, uint32_t o
 void timer_slave_mode_select(uint32_t timer_periph, uint32_t slavemode)
 {
     uint32_t TIMERxCFG_temp = 0U;
-    volatile uint32_t *TIMERxCFG_addr = 0U;
+    volatile uint32_t *TIMERxCFG_addr = NULL;
     uint32_t trigger_temp = 0U;
     uint8_t i = 0U;
-    switch(timer_periph){
+
+    switch(timer_periph) {
     case TIMER0:
         TIMERxCFG_addr = &SYSCFG_TIMER0CFG;
         break;
@@ -1615,18 +1616,18 @@ void timer_slave_mode_select(uint32_t timer_periph, uint32_t slavemode)
     default:
          break;
      }
+
     TIMERxCFG_temp = REG32(TIMERxCFG_addr);
-    if((TIMERxCFG_temp & 0xFFFFFFFFU) == 0U){
+    if((TIMERxCFG_temp & 0xFFFFFFFFU) == 0U) {
         TIMERxCFG_temp = 0xF << (slavemode * 4U);
-    }else{
-        for(i = 0U; i < 8U; i++){
-            if((TIMERxCFG_temp & (BITS(0,3) << (i * 4U))) != 0U) {
-                trigger_temp = (TIMERxCFG_temp & (BITS(0,3) << (i * 4U))) >> (i * 4U);
-                break;
-            }
+    } else {
+        for(i = 0U; i < 8U; i++) {
+            if((TIMERxCFG_temp & (BITS(0,3) << (i * 4U))) != 0U) break;
         }
+        trigger_temp = (TIMERxCFG_temp & (BITS(0,3) << (i * 4U))) >> (i * 4U);
         TIMERxCFG_temp = trigger_temp << (slavemode * 4U);
     }
+
     REG32(TIMERxCFG_addr) = TIMERxCFG_temp;
 }
 
@@ -1759,7 +1760,7 @@ void timer_internal_trigger_as_external_clock_config(uint32_t timer_periph, uint
 */
 void timer_external_trigger_as_external_clock_config(uint32_t timer_periph, uint32_t extrigger, uint16_t extpolarity, uint32_t extfilter)
 {
-    if(TIMER_SMCFG_TRGSEL_CI1FE1 == extrigger){
+    if(TIMER_SMCFG_TRGSEL_CI1FE1 == extrigger) {
         /* reset the CH1EN bit */
         TIMER_CHCTL2(timer_periph) &= (~(uint32_t)TIMER_CHCTL2_CH1EN);
         /* reset the CH1NP bit */
@@ -1776,7 +1777,7 @@ void timer_external_trigger_as_external_clock_config(uint32_t timer_periph, uint
         TIMER_CHCTL0(timer_periph) |= (uint32_t)(extfilter << 12U);
         /* set the CH1EN bit */
         TIMER_CHCTL2(timer_periph) |= (uint32_t)TIMER_CHCTL2_CH1EN;
-    }else{
+    } else {
         /* reset the CH0EN bit */
         TIMER_CHCTL2(timer_periph) &= (~(uint32_t)TIMER_CHCTL2_CH0EN);
         /* reset the CH0P and CH0NP bits */

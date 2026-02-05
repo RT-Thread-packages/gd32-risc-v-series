@@ -577,6 +577,17 @@ typedef union {
 #endif /* __ASSEMBLY__ */
 
 /**
+ * \brief   Get IRQ status
+ * \details Get IRQ state in the MSUBM Register.
+ * \remarks
+ *          Can only be executed in Privileged modes.
+ */
+__STATIC_FORCEINLINE uint32_t __get_CONTROL(void)
+{
+    return (uint32_t) ((__RV_CSR_READ(CSR_MSUBM) & ((0xFFFFFFFFUL << 6) & (0xFFFFFFFFUL >> (31U - (uint32_t)7)))) >> 6);
+}
+
+/**
  * \brief   Enable IRQ Interrupts
  * \details Enables IRQ interrupts by setting the MIE-bit in the MSTATUS Register.
  * \remarks

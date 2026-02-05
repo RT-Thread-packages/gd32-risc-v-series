@@ -2,11 +2,11 @@
     \file    gd32vw55x_fmc.h
     \brief   definitions for the FMC
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -43,11 +43,6 @@ OF SUCH DAMAGE.
 #define FMC_OBSTAT_SPCSTAT_MASK           ((uint32_t)0x00000002U)
 /* FMC_OBWRPx/FMC_OFRG end page of region offset */
 #define FMC_EPAGE_OFFSET                  ((uint32_t)16U)
-
-/* return the FMC state */
-static fmc_state_enum fmc_state_get(void);
-/* check FMC ready or not */
-static fmc_state_enum fmc_ready_wait(uint32_t timeout);
 
 /*!
     \brief      unlock the main FMC operation
@@ -192,6 +187,7 @@ fmc_state_enum fmc_continuous_program(uint32_t address, uint32_t data[], uint32_
         /* set the PG bit to start program */
         FMC_CTL |= FMC_CTL_PG;
 
+        size = size / 4;
         for(uint32_t i = 0U; i < size; i++){
             REG32(address) = data[i];
             address += 4U;
@@ -689,14 +685,14 @@ void fmc_interrupt_flag_clear(uint32_t flag)
       \arg        FMC_BUSY: the operation is in progress
       \arg        FMC_WPERR: erase/program protection error
 */
-static fmc_state_enum fmc_state_get(void)
+fmc_state_enum fmc_state_get(void)
 {
     fmc_state_enum fmc_state = FMC_READY;
 
-    if((uint32_t) 0x00U != (FMC_STAT & FMC_STAT_BUSY)){
+    if ((uint32_t) 0x00U != (FMC_STAT & FMC_STAT_BUSY)) {
         fmc_state = FMC_BUSY;
-    }else{
-        if((uint32_t) 0x00U != (FMC_STAT & FMC_STAT_WPERR)){
+    } else {
+        if ((uint32_t) 0x00U != (FMC_STAT & FMC_STAT_WPERR)) {
             fmc_state = FMC_WPERR;
         }
     }
@@ -713,18 +709,18 @@ static fmc_state_enum fmc_state_get(void)
       \arg        FMC_WPERR: erase/program protection error
       \arg        FMC_TOERR: timeout error
 */
-static fmc_state_enum fmc_ready_wait(uint32_t timeout)
+fmc_state_enum fmc_ready_wait(uint32_t timeout)
 {
     fmc_state_enum fmc_state = FMC_BUSY;
 
     /* wait for FMC ready */
-    do{
+    do {
         /* get FMC state */
         fmc_state = fmc_state_get();
         timeout--;
-    }while((FMC_BUSY == fmc_state) && (0x00U != timeout));
+    } while((FMC_BUSY == fmc_state) && (0x00U != timeout));
 
-    if (FMC_BUSY == fmc_state){
+    if (FMC_BUSY == fmc_state) {
         fmc_state = FMC_TOERR;
     }
 

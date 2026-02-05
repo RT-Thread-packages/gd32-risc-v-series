@@ -36,7 +36,9 @@
 # define LOG_REGBYTES           2
 #endif /* __riscv_xlen */
 
+#ifndef REGBYTES
 #define REGBYTES (1 << LOG_REGBYTES)
+#endif /* REGBYTES */
 
 #if defined(__riscv_flen)
 #if __riscv_flen == 64

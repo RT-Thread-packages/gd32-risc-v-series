@@ -1,7 +1,6 @@
 /*!
-    \file    system_gd32vw55x.h
-    \brief   RISC-V Device Peripheral Access Layer Header File for
-             GD32VW55x Device Series
+    \file    platform_def.h
+    \brief   Platform definition for GD32VW55x SDK
 
     \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
@@ -33,43 +32,59 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 OF SUCH DAMAGE.
 */
 
-/* This file refers the RISC-V standard, some adjustments are made according to GigaDevice chips */
+#ifndef _PLATFORM_DEF_H
+#define _PLATFORM_DEF_H
 
-#ifndef SYSTEM_GD32VW55X_H
-#define SYSTEM_GD32VW55X_H
+#define PLATFORM_FPGA_32103_V7          1
+#define PLATFORM_FPGA_32103_ULTRA       2
+#define PLATFORM_ASIC_32103             103
 
-#ifdef __cplusplus
-extern "C" {
+// platform type
+#define CONFIG_PLATFORM                 PLATFORM_ASIC_32103
+
+#ifndef CONFIG_PLATFORM
+#error "CONFIG_PLATFORM must be defined!"
+#elif CONFIG_PLATFORM >= PLATFORM_ASIC_32103
+#define CONFIG_PLATFORM_ASIC
+#else
+#define CONFIG_PLATFORM_FPGA
 #endif
 
-#include <stdint.h>
+// board type
+#define PLATFORM_BOARD_32VW55X_START    0
+#define PLATFORM_BOARD_32VW55X_EVAL     1
+#define PLATFORM_BOARD_32VW55X_F527     2
 
-#if   defined (__ICCRISCV__)
-    #include "compiler.h"
+#ifdef CONFIG_PLATFORM_ASIC
+#define CONFIG_BOARD                    PLATFORM_BOARD_32VW55X_EVAL
 #endif
 
-/* system clock frequency (core clock) */
-extern uint32_t SystemCoreClock;
+// RF type
+#define RF_GDM32106                     0
+#define RF_GDM32110                     1
+#define RF_GDM32103                     2
 
-/* function declarations */
-/* initialize the system and update the SystemCoreClock variable */
-extern void SystemInit (void);
-/* update the SystemCoreClock with current core clock retrieved from cpu registers */
-extern void SystemCoreClockUpdate (void);
-
-/**
- * \brief   force value to exist and force code ordering
- * \details
- * used to both forces a value to exist(prevent a value from being removed),
- * and force ording with certain other surrounding operations.
- */
-__STATIC_FORCEINLINE void __DonotOptimize(void *value)
-{
-    __ASM volatile ("" : "+r,m"(value) : : "memory");
-}
-
-#ifdef __cplusplus
-}
+#ifdef CONFIG_PLATFORM_ASIC
+#define CONFIG_RF_TYPE                  RF_GDM32103
+#else
+#define CONFIG_RF_TYPE                  RF_GDM32110
 #endif
 
-#endif /* SYSTEM_GD32VW55X_H */
+// CRYSTAL type
+#define CRYSTAL_26M                     0
+#define CRYSTAL_40M                     1
+#define PLATFORM_CRYSTAL                CRYSTAL_40M
+
+// Wireless mode
+#define CFG_WLAN_SUPPORT
+// #define CFG_BLE_SUPPORT
+#if defined(CFG_WLAN_SUPPORT) && defined(CFG_BLE_SUPPORT)
+  #define CFG_COEX
+#endif
+
+// Flag indicating if NVDS FLASH feature is supported or not
+#define NVDS_FLASH_SUPPORT              1
+
+// Ext flash memory size
+#define QSPI_FLASH_MEM                  2     //2: 2M, 16: 16M
+#endif /* _PLATFORM_DEF_H */

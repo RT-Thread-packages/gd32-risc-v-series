@@ -21,7 +21,47 @@
 
 #include "gd32vw55x.h"
 
+#ifndef BSP_USING_WLAN
+#define EXEC_USING_STD_PRINTF
+#endif /* BSP_USING_WLAN */
+
+#ifndef EXEC_USING_STD_PRINTF
+#include "log_uart.h"
+#include "rom_export.h"
+#include "raw_flash_api.h"
+#include "wrapper_os.h"
+#define EXC_LOG_TO_FLASH    0
+#endif
+
+#define UART_CMD_IN_EXC     1
+
+extern uint32_t _sp[];
+
 typedef struct EXC_Frame {
+#ifdef __riscv_flen
+    unsigned long f0;
+    unsigned long f1;
+    unsigned long f2;
+    unsigned long f3;
+    unsigned long f4;
+    unsigned long f5;
+    unsigned long f6;
+    unsigned long f7;
+    unsigned long f10;
+    unsigned long f11;
+    unsigned long f12;
+    unsigned long f13;
+    unsigned long f14;
+    unsigned long f15;
+    unsigned long f16;
+    unsigned long f17;
+    unsigned long f28;
+    unsigned long f29;
+    unsigned long f30;
+    unsigned long f31;
+    unsigned long rcv;               /* pendding for 8-byte alignment */
+    unsigned long fcsr;
+#endif
     unsigned long ra;                /* ra: x1, return address for jump */
     unsigned long tp;                /* tp: x4, thread pointer */
     unsigned long t0;                /* t0: x5, temporary register 0 */
@@ -78,6 +118,320 @@ typedef void (*EXC_HANDLER)(unsigned long mcause, unsigned long sp);
 
 void Exception_DumpFrame(unsigned long sp);
 
+#ifndef EXEC_USING_STD_PRINTF
+static int8_t __hex_to_val(uint8_t c)
+{
+    if (c >= '0' && c <= '9') {
+        return (c - '0');
+    } else if(c >= 'a' && c <= 'f') {
+        return (c - 'a') + 10;
+    } else if(c >= 'A' && c <= 'F') {
+        return (c - 'A') + 10;
+    } else {
+        return -1;
+    }
+}
+
+static void __print32(uint32_t val)
+{
+    int8_t i;
+    uint8_t c;
+
+    for (i = 7; i >= 0; i --) {
+        c = (val >> (i << 2)) & 0xf;
+        if (c >= 10)
+            c += 'a' - 10;
+        else
+            c += '0';
+        log_uart_putc_noint(c);
+    }
+}
+
+static void __print_str(const char* s)
+{
+    char *str = (char *)s;
+
+    while(*str) {
+        log_uart_putc_noint(*str);
+        str++;
+    }
+}
+
+void print_reg(const char *title, uint32_t val)
+{
+    __print_str(title);
+    __print_str(":      0x");
+    __print32(val);
+    __print_str("\r\n");
+}
+
+void dumpStackInfo(unsigned long sp, int32_t num)
+{
+    uint32_t i = 0;
+    int8_t j = 0;
+    char c;
+
+    while(num > 0)
+    {
+        uint8_t val = *(uint8_t *)sp;
+        for (j = 4; j >= 0; j -= 4) {
+            c = ((val >> j ) & 0xF);
+            if (c >= 10)
+                c += 'a' - 10;
+            else
+                c += '0';
+            log_uart_putc_noint(c);
+        }
+
+
+        i++;
+        sp++;
+        if ((i % 16) == 0) {
+            __print_str("\r\n");
+        }
+        else {
+            log_uart_putc_noint(',');
+            log_uart_putc_noint(' ');
+        }
+
+        num--;
+    }
+}
+
+void xCurrentTaskDumpInfo(unsigned long sp)
+{
+    int8_t j = 0;
+    char *pcTaskName = sys_task_name_get(NULL);
+    int32_t num = sys_current_task_stack_depth(sp);
+#if (configRECORD_STACK_HIGH_ADDRESS == 0)
+    __print_str("set configRECORD_STACK_HIGH_ADDRESS=1 to get precise data\r\n");
+#endif
+    __print_str((const char *)pcTaskName);
+
+    __print_str(" Stack Dump:\r\n");
+
+    dumpStackInfo(sp, num);
+}
+
+
+static bool parseUartCmd(char *p_buf, uint8_t buf_len, unsigned long sp) {
+    uint8_t idx = 0;
+    uint8_t state = 0;
+    uint32_t start_addr = 0;
+    uint32_t len = 0;
+    int32_t i;
+    uint32_t val;
+    int8_t val8;
+    char cmdr[] = {'r', 'm', 'e', 'm', ' '};
+    char cmdd[] = {'d', 'u', 'm', 'p'};
+    char cmdh[] = {'h', 'e', 'l', 'p'};
+
+    while(idx < buf_len) {
+        switch (state) {
+        case 0:
+            if (p_buf[idx] == 'r' && (buf_len - idx) > 5) {
+                for (i = 0; i < 5; i++) {
+                    if (p_buf[idx] != cmdr[i]) {
+                        return false;
+                    }
+                    idx++;
+                }
+
+                state = 1;
+                continue;
+            }
+            else if (p_buf[idx] == 'd' && (buf_len - idx) >= 4) {
+                for (i = 0; i < 4; i++) {
+                    if (p_buf[idx] != cmdd[i]) {
+                        return false;
+                    }
+                    idx++;
+                }
+                Exception_DumpFrame(sp);
+                // Trap from task
+                if ((MSUBM_PTYP & __RV_CSR_READ(CSR_MSUBM)) == 0) {
+                    print_reg("SP     ", sp);
+                    xCurrentTaskDumpInfo(sp);
+                }
+                // Trap from interrupt
+                else if ((MSUBM_PTYP & __RV_CSR_READ(CSR_MSUBM)) == 0x0100) {
+                    unsigned long int_sp = __RV_CSR_READ(CSR_MSCRATCH);
+                    print_reg("SP     ", int_sp);
+#ifndef __riscv_32e
+                    int32_t num = 80;
+#else
+                    int32_t num = 64;
+#endif
+
+#ifdef __riscv_flen
+                    num += 80;
+#endif
+                    __print_str("Interrupt Stack Dump:\r\n");
+                    dumpStackInfo(sp, num);
+                    num = (uint32_t)_sp - int_sp;
+                    dumpStackInfo(int_sp, num);
+                }
+
+                __print_str("Please use bloodhound tool to parse log above!\r\n");
+                return true;
+            }
+            else if (p_buf[idx] == 'h' && (buf_len - idx) >= 4) {
+                for (i = 0; i < 4; i++) {
+                    if (p_buf[idx] != cmdh[i]) {
+                        return false;
+                    }
+                    idx++;
+                }
+                __print_str("rmem ADDR(Hex 4bytes align) Len(Hex length of 4 bytes)\r\n");
+                __print_str("dump\r\n");
+
+                return true;
+            }
+            break;
+        case 1:
+            if (p_buf[idx] == ' ') {
+                state = 2;
+                break;
+            }
+
+            val8 = __hex_to_val(p_buf[idx]);
+
+            if (val8 < 0)
+                return false;
+            else
+                start_addr = (start_addr << 4) + val8;
+
+            break;
+        case 2:
+            if (p_buf[idx] == ' ') {
+                break;
+            }
+
+            val8 = __hex_to_val(p_buf[idx]);
+            if (val8 < 0)
+                return false;
+            else
+                len = (len << 4) + val8;
+
+        default:
+            break;
+        }
+        idx++;
+    }
+
+    // we need to check read addr is ok
+    i = 0;
+    do {
+        val = *(uint32_t *)start_addr;
+
+        if ((i % 4) == 0) {
+            __print_str("\r\n");
+            __print32(start_addr);
+            log_uart_putc_noint(':');
+        }
+
+        log_uart_putc_noint(' ');
+        __print32(val);
+
+        start_addr = start_addr + 4;
+    } while(++i < len);
+
+    return true;
+}
+#endif
+
+#if EXC_LOG_TO_FLASH
+#define WR_REGION_SPAGE    ((uint32_t)0x003FE000U)       /*!< start page of write protection region: page1022 */
+#define WR_REGION_EPAGE    ((uint32_t)0x003FF000U)       /*!< end page of write protection region: page1023 */
+
+static void dump_info_2_flash(unsigned long sp)
+{
+    char prefix[3];
+    uint32_t reg_val = 0;
+    uint32_t offset = WR_REGION_SPAGE;
+
+    if (raw_flash_erase(WR_REGION_SPAGE, FLASH_PAGE_SIZE))
+        return;
+
+    prefix[0] = 20;
+    prefix[1] = 0;
+    prefix[2] = 0x01;   //register value
+    raw_flash_write(offset, (void *)&prefix, 3);
+    offset += 3;
+
+    reg_val = __RV_CSR_READ(CSR_MCAUSE);
+    raw_flash_write(offset, (void *)&reg_val, 4);
+    offset += 4;
+
+    reg_val = __RV_CSR_READ(CSR_MDCAUSE);
+    raw_flash_write(offset, (void *)&reg_val, 4);
+    offset += 4;
+
+    reg_val = __RV_CSR_READ(CSR_MEPC);
+    raw_flash_write(offset, (void *)&reg_val, 4);
+    offset += 4;
+
+    reg_val = __RV_CSR_READ(CSR_MTVAL);
+    raw_flash_write(offset, (void *)&reg_val, 4);
+    offset += 4;
+
+    reg_val = __RV_CSR_READ(CSR_MSUBM);
+    raw_flash_write(offset, (void *)&reg_val, 4);
+    offset += 4;
+
+    prefix[2] = 0x02;   //stack type
+    // Trap from task
+    if ((MSUBM_PTYP & __RV_CSR_READ(CSR_MSUBM)) == 0) {
+        int32_t num = sys_current_task_stack_depth(sp);
+        if ((offset + num + 6) > WR_REGION_EPAGE) {
+            num = WR_REGION_EPAGE - offset - 6;
+        }
+        prefix[0] = num & 0xFF;
+        prefix[1] = (num >> 8) & 0xFF;
+        raw_flash_write(offset, (void *)prefix, 3);
+        offset += 3;
+        raw_flash_write(offset, (void *)sp, num);
+        offset += num;
+    }
+    // Trap from interrupt
+    else if ((MSUBM_PTYP & __RV_CSR_READ(CSR_MSUBM)) == 0x0100) {
+          unsigned long int_sp = __RV_CSR_READ(CSR_MSCRATCH);
+          int32_t sk_num = (uint32_t)_sp - int_sp;
+#ifndef __riscv_32e
+        int32_t num = 80;
+#else
+        int32_t num = 64;
+#endif
+
+#ifdef __riscv_flen
+        num += 80;
+#endif
+
+        if ((offset + num + sk_num + 6) > WR_REGION_EPAGE) {
+            sk_num = WR_REGION_EPAGE - offset - 6 - num;
+        }
+
+        num += sk_num;
+        prefix[0] = num & 0xFF;
+        prefix[1] = (num >> 8) & 0xFF;
+        raw_flash_write(offset, (void *)prefix, 3);
+        offset += 3;
+
+        num -= sk_num;
+        raw_flash_write(offset, (void *)sp, num);
+        offset += num;
+
+        num = sk_num;
+        raw_flash_write(offset, (void *)int_sp, num);
+        offset += num;
+    }
+
+    prefix[0] = 0;
+    prefix[1] = 0;
+    raw_flash_write(offset, (void *)&prefix, 3);
+}
+#endif
+
 /**
  * \brief      System Default Exception Handler
  * \details
@@ -87,11 +441,96 @@ void Exception_DumpFrame(unsigned long sp);
 static void system_default_exception_handler(unsigned long mcause, unsigned long sp)
 {
     /* TODO: Uncomment this if you have implement printf function */
-//    printf("MCAUSE : 0x%lx\r\n", mcause);
-//    printf("MDCAUSE: 0x%lx\r\n", __RV_CSR_READ(CSR_MDCAUSE));
-//    printf("MEPC   : 0x%lx\r\n", __RV_CSR_READ(CSR_MEPC));
-//    printf("MTVAL  : 0x%lx\r\n", __RV_CSR_READ(CSR_MTVAL));
+#ifdef EXEC_USING_STD_PRINTF
+    printf("MCAUSE : 0x%lx\r\n", mcause);
+    printf("MDCAUSE: 0x%lx\r\n", __RV_CSR_READ(CSR_MDCAUSE));
+    printf("MEPC   : 0x%lx\r\n", __RV_CSR_READ(CSR_MEPC));
+    printf("MTVAL  : 0x%lx\r\n", __RV_CSR_READ(CSR_MTVAL));
+#else
+    char ch;
+    char uart_buf[64];
+    uint8_t uart_index = 0;
+
+    __print_str("System Default Exception \r\n");
+    print_reg("MCAUSE ", mcause);
+    print_reg("MDCAUSE", __RV_CSR_READ(CSR_MDCAUSE));
+    print_reg("MEPC   ", __RV_CSR_READ(CSR_MEPC));
+    print_reg("MTVAL  ", __RV_CSR_READ(CSR_MTVAL));
+    print_reg("MSUBM  ", __RV_CSR_READ(CSR_MSUBM));
+#endif
     Exception_DumpFrame(sp);
+
+#ifndef EXEC_USING_STD_PRINTF
+    // Trap from task
+    if ((MSUBM_PTYP & __RV_CSR_READ(CSR_MSUBM)) == 0) {
+        print_reg("SP     ", sp);
+        xCurrentTaskDumpInfo(sp);
+    }
+    // Trap from interrupt
+    else if ((MSUBM_PTYP & __RV_CSR_READ(CSR_MSUBM)) == 0x0100) {
+        unsigned long int_sp = __RV_CSR_READ(CSR_MSCRATCH);
+        print_reg("SP     ", int_sp);
+#ifndef __riscv_32e
+        int32_t num = 80;
+#else
+        int32_t num = 64;
+#endif
+
+#ifdef __riscv_flen
+        num += 84;
+#endif
+        __print_str("Interrupt Stack Dump:\r\n");
+        dumpStackInfo(sp, num);
+        num = (uint32_t)_sp - int_sp;
+        dumpStackInfo(int_sp, num);
+    }
+    __print_str("Please use bloodhound tool to parse log above!\r\n");
+
+#if EXC_LOG_TO_FLASH
+    dump_info_2_flash(sp);
+#endif
+
+#if (UART_CMD_IN_EXC == 1)
+    uart_config(LOG_UART, DEFAULT_LOG_BAUDRATE, false, false, false);
+    __print_str("\r\n");
+    __print_str("print help to get cmd\r\n");
+    while (1) {
+        // We should have chance to check overflow error
+        // Otherwise it may cause dead loop handle rx interrupt
+        if (RESET != usart_flag_get(LOG_UART, USART_FLAG_ORERR)) {
+            usart_flag_clear(LOG_UART, USART_FLAG_ORERR);
+        }
+
+        if ((RESET != usart_flag_get(LOG_UART, USART_FLAG_RBNE))) {
+            ch = (char)usart_data_receive(LOG_UART);
+        }
+        else {
+            continue;
+        }
+
+        if (ch == '\r' || ch == '\n') { /* putty doesn't transmit '\n' */
+            __print_str("\r\n");
+            if (uart_index > 0) {
+                parseUartCmd(uart_buf, uart_index, sp);
+            }
+            log_uart_putc_noint('#');
+            log_uart_putc_noint(' ');
+            uart_index = 0;
+        } else if (ch == '\b') { /* non-destructive backspace */
+            if (uart_index > 0) {
+                uart_buf[--uart_index] = '\0';
+            }
+        }
+        else {
+            uart_buf[uart_index++] = ch;
+            if (uart_index >= 64) {
+                uart_index = 0;
+            }
+            log_uart_putc_noint(ch);
+        }
+    }
+#endif
+#endif
     while (1);
 }
 
@@ -104,11 +543,20 @@ static void system_default_exception_handler(unsigned long mcause, unsigned long
 void nmi_handler(unsigned long mcause, unsigned long sp)
 {
     /* TODO: Uncomment this if you have implement printf function */
-//    printf("NMI \r\n");
-//    printf("MCAUSE : 0x%lx\r\n", mcause);
-//    printf("MDCAUSE: 0x%lx\r\n", __RV_CSR_READ(CSR_MDCAUSE));
-//    printf("MEPC   : 0x%lx\r\n", __RV_CSR_READ(CSR_MEPC));
-//    printf("MTVAL  : 0x%lx\r\n", __RV_CSR_READ(CSR_MTVAL));
+#ifdef EXEC_USING_STD_PRINTF
+    printf("NMI \r\n");
+    printf("MCAUSE : 0x%lx\r\n", mcause);
+    printf("MDCAUSE: 0x%lx\r\n", __RV_CSR_READ(CSR_MDCAUSE));
+    printf("MEPC   : 0x%lx\r\n", __RV_CSR_READ(CSR_MEPC));
+    printf("MTVAL  : 0x%lx\r\n", __RV_CSR_READ(CSR_MTVAL));
+#else
+    __print_str("NMI \r\n");
+    print_reg("MCAUSE ", mcause);
+    print_reg("MDCAUSE", __RV_CSR_READ(CSR_MDCAUSE));
+    print_reg("MEPC   ", __RV_CSR_READ(CSR_MEPC));
+    print_reg("MTVAL  ", __RV_CSR_READ(CSR_MTVAL));
+    print_reg("MSUBM  ", __RV_CSR_READ(CSR_MSUBM));
+#endif
     Exception_DumpFrame(sp);
     while (1);
 }
@@ -204,20 +652,43 @@ void Exception_DumpFrame(unsigned long sp)
 
 #ifndef __riscv_32e
     /* TODO: Uncomment this if you have implement printf function */
-//    printf("ra: 0x%x, tp: 0x%x, t0: 0x%x, t1: 0x%x, t2: 0x%x, t3: 0x%x, t4: 0x%x, t5: 0x%x, t6: 0x%x\n" \
-//           "a0: 0x%x, a1: 0x%x, a2: 0x%x, a3: 0x%x, a4: 0x%x, a5: 0x%x, a6: 0x%x, a7: 0x%x\n" \
-//           "mcause: 0x%x, mepc: 0x%x, msubm: 0x%x\n", exc_frame->ra, exc_frame->tp, exc_frame->t0, \
-//           exc_frame->t1, exc_frame->t2, exc_frame->t3, exc_frame->t4, exc_frame->t5, exc_frame->t6, \
-//           exc_frame->a0, exc_frame->a1, exc_frame->a2, exc_frame->a3, exc_frame->a4, exc_frame->a5, \
-//           exc_frame->a6, exc_frame->a7, exc_frame->mcause, exc_frame->mepc, exc_frame->msubm);
+#ifdef EXEC_USING_STD_PRINTF
+    printf("ra: 0x%x, tp: 0x%x, t0: 0x%x, t1: 0x%x, t2: 0x%x, t3: 0x%x, t4: 0x%x, t5: 0x%x, t6: 0x%x\n" \
+           "a0: 0x%x, a1: 0x%x, a2: 0x%x, a3: 0x%x, a4: 0x%x, a5: 0x%x, a6: 0x%x, a7: 0x%x\n" \
+           "mcause: 0x%x, mepc: 0x%x, msubm: 0x%x\n", exc_frame->ra, exc_frame->tp, exc_frame->t0, \
+           exc_frame->t1, exc_frame->t2, exc_frame->t3, exc_frame->t4, exc_frame->t5, exc_frame->t6, \
+           exc_frame->a0, exc_frame->a1, exc_frame->a2, exc_frame->a3, exc_frame->a4, exc_frame->a5, \
+           exc_frame->a6, exc_frame->a7, exc_frame->mcause, exc_frame->mepc, exc_frame->msubm);
 #else
-    /* TODO: Uncomment this if you have implement printf function */
-//    printf("ra: 0x%x, tp: 0x%x, t0: 0x%x, t1: 0x%x, t2: 0x%x\n" \
-//           "a0: 0x%x, a1: 0x%x, a2: 0x%x, a3: 0x%x, a4: 0x%x, a5: 0x%x\n" \
-//           "mcause: 0x%x, mepc: 0x%x, msubm: 0x%x\n", exc_frame->ra, exc_frame->tp, exc_frame->t0, \
-//           exc_frame->t1, exc_frame->t2, exc_frame->a0, exc_frame->a1, exc_frame->a2, exc_frame->a3, \
-//           exc_frame->a4, exc_frame->a5, exc_frame->mcause, exc_frame->mepc, exc_frame->msubm);
+    print_reg("ra     ", exc_frame->ra);
+    print_reg("tp     ", exc_frame->tp);
+    print_reg("t0     ", exc_frame->t0);
+    print_reg("t1     ", exc_frame->t1);
+    print_reg("t2     ", exc_frame->t2);
+    print_reg("t3     ", exc_frame->t3);
+    print_reg("t4     ", exc_frame->t4);
+    print_reg("t5     ", exc_frame->t5);
+    print_reg("t6     ", exc_frame->t6);
+
+    print_reg("a0     ", exc_frame->a0);
+    print_reg("a1     ", exc_frame->a1);
+    print_reg("a2     ", exc_frame->a2);
+    print_reg("a3     ", exc_frame->a3);
+    print_reg("a4     ", exc_frame->a4);
+    print_reg("a5     ", exc_frame->a5);
+    print_reg("a6     ", exc_frame->a6);
+    print_reg("mcause ", exc_frame->mcause);
+    print_reg("mepc   ", exc_frame->mepc);
+    print_reg("msubm  ", exc_frame->msubm);
 #endif
+#else /* __riscv_32e */
+    /* TODO: Uncomment this if you have implement printf function */
+    printf("ra: 0x%x, tp: 0x%x, t0: 0x%x, t1: 0x%x, t2: 0x%x\n" \
+           "a0: 0x%x, a1: 0x%x, a2: 0x%x, a3: 0x%x, a4: 0x%x, a5: 0x%x\n" \
+           "mcause: 0x%x, mepc: 0x%x, msubm: 0x%x\n", exc_frame->ra, exc_frame->tp, exc_frame->t0, \
+           exc_frame->t1, exc_frame->t2, exc_frame->a0, exc_frame->a1, exc_frame->a2, exc_frame->a3, \
+           exc_frame->a4, exc_frame->a5, exc_frame->mcause, exc_frame->mepc, exc_frame->msubm);
+#endif /* __riscv_32e */
 }
 
 #if 0

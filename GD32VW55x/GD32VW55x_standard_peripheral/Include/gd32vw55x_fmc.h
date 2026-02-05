@@ -2,11 +2,11 @@
     \file    gd32vw55x_fmc.h
     \brief   definitions for the FMC
 
-    \version 2025-01-16, V1.4.0, firmware for GD32VW55x
+    \version 2023-07-20, V1.0.0, firmware for GD32VW55x
 */
 
 /*
-    Copyright (c) 2025, GigaDevice Semiconductor Inc.
+    Copyright (c) 2023, GigaDevice Semiconductor Inc.
 
     Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -286,4 +286,8 @@ void fmc_interrupt_disable(uint32_t interrupt);
 FlagStatus fmc_interrupt_flag_get(uint32_t flag);
 /* clear FMC interrupt flag */
 void fmc_interrupt_flag_clear(uint32_t flag);
+/* return the FMC state */
+fmc_state_enum fmc_state_get(void);
+/* check FMC ready or not */
+fmc_state_enum fmc_ready_wait(uint32_t timeout);
 #endif /* GD32VW55X_FMC_H */

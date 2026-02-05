@@ -35,4 +35,3 @@
 
 
 #endif /* __NMSIS_COMPILER_H */
-
